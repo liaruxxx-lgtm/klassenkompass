@@ -24,12 +24,12 @@ npm run lint
 
 ## Hosting und Betrieb
 
-Die feste kostenlose Sites-Adresse lautet:
+Die feste kostenlose öffentliche Adresse lautet:
 
-<https://klassenkompass-acht.bestefamilie.chatgpt.site>
+<https://liaruxxx-lgtm.github.io/klassenkompass/>
 
 Der Hosting-Stand und die einfachen Bedienabläufe für Statusprüfung,
-Veröffentlichen, Privatstellen und Wiederherstellen sind in
+Veröffentlichen, Ausschalten und Wiederherstellen sind in
 [HOSTING.md](HOSTING.md) dokumentiert. Die Adresse bleibt bei späteren
 Versionen gleich.
 
