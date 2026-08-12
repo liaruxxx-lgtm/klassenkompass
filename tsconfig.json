@@ -25,5 +25,11 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "node_modules.icloud-stale",
+    ".vinext.icloud-stale",
+    ".wrangler.icloud-stale",
+    "public-dist"
+  ]
 }

@@ -10,8 +10,14 @@ import tseslint from "typescript-eslint";
 const eslintConfig = defineConfig([
   globalIgnores([
     ".next/**",
+    ".vinext/**",
+    ".vinext.icloud-stale/**",
+    ".wrangler/**",
+    ".wrangler.icloud-stale/**",
     "dist/**",
+    "node_modules.icloud-stale/**",
     "out/**",
+    "public-dist/**",
     "build/**",
     "next-env.d.ts",
   ]),
