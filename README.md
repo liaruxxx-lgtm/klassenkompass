@@ -22,6 +22,17 @@ npm test
 npm run lint
 ```
 
+## Hosting und Betrieb
+
+Die feste kostenlose Sites-Adresse lautet:
+
+<https://klassenkompass-acht.bestefamilie.chatgpt.site>
+
+Der Hosting-Stand und die einfachen Bedienabläufe für Statusprüfung,
+Veröffentlichen, Privatstellen und Wiederherstellen sind in
+[HOSTING.md](HOSTING.md) dokumentiert. Die Adresse bleibt bei späteren
+Versionen gleich.
+
 ## Umfang dieses Prototyps
 
 - Zugang, Schüler- und Lehreransicht
