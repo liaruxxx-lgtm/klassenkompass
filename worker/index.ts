@@ -13,6 +13,11 @@ interface Env {
       };
     };
   };
+  DB: {
+    prepare(query: string): unknown;
+  };
+  STUDENT_ACCESS_CODE?: string;
+  ADMIN_ACCESS_CODE?: string;
 }
 
 interface ExecutionContext {

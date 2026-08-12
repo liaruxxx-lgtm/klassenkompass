@@ -7,23 +7,25 @@ Stand: 12. August 2026
 - Öffentliche Website: <https://liaruxxx-lgtm.github.io/klassenkompass/>
 - Quellcode und Versionsverlauf:
   <https://github.com/liaruxxx-lgtm/klassenkompass>
-- Hosting: kostenloses GitHub Pages über HTTPS
+- Öffentliche Oberfläche: GitHub Pages über HTTPS
+- Gemeinsamer Server und Datenbank: Sites mit D1
 - Zugriff: öffentlich, ohne GitHub-, ChatGPT- oder OpenAI-Konto
 - Kanonischer Projektordner: `/Users/elias/Documents/ChatGPT/klassen ordner`
 - Veröffentlichungsautomatik: `.github/workflows/deploy-pages.yml`
 
-Der Klassenkompass ist derzeit eine statische Browser-App. Es läuft kein
-Prozess auf dem Mac und kein eigener Server, der dauerhaft gestartet bleiben
-muss. GitHub liefert die geprüften Dateien aus; der Mac darf ausgeschaltet sein.
+Die öffentliche Oberfläche wird weiterhin von GitHub ausgeliefert. Zugänge und
+Termine laufen zusätzlich über einen dauerhaften Serverdienst mit gemeinsamer
+Datenbank. Der Mac darf ausgeschaltet sein; weder Website noch Speicherung
+hängen vom Heim-WLAN oder einem laufenden lokalen Prozess ab.
 
 Das Repository ist öffentlich, weil diese GitHub-Pages-Veröffentlichung den
 kostenlosen öffentlichen Weg nutzt. Im Projekt befinden sich keine echten
-Termine, Konten oder geheimen Zugangsdaten. Die Demo-Codes sind ohnehin Teil des
-sichtbaren Frontend-Prototyps.
+Termine oder Zugangsdaten. Die produktiven Testcodes werden als geschützte
+Servereinstellungen verwaltet und nicht in die Browser-App eingebaut.
 
 Die frühere OpenAI-Sites-Adresse
-<https://klassenkompass-acht.bestefamilie.chatgpt.site> bleibt eine private
-Vorschau mit ChatGPT-Anmeldung und ist nicht die Adresse für die Klasse.
+<https://klassenkompass-acht.bestefamilie.chatgpt.site> bleibt eine alte private
+Vorschau. Sie ist nicht mehr der aktuelle Server des Klassenkompasses.
 
 ## Bedienung über Codex
 
@@ -44,9 +46,9 @@ Codex prüft dabei mindestens:
 3. eine unabhängige HTTPS-Anfrage an die öffentliche Adresse und
 4. bei einem gemeldeten Bedienfehler die Browser-Konsole.
 
-Da die App statisch ist, gibt es keine laufenden Serverprozesse oder
-Anwendungs-Serverlogs. Fehler beim Bauen und Veröffentlichen stehen im
-GitHub-Actions-Lauf.
+Zusätzlich zur öffentlichen Oberfläche werden dabei Server und Datenbank geprüft.
+Fehler beim Bauen und Veröffentlichen stehen im GitHub-Actions-Lauf; Fehler der
+Termin-API können außerdem in den Serverprotokollen geprüft werden.
 
 ### Website ausschalten
 
@@ -102,9 +104,11 @@ Codex soll keine Historie löschen oder umschreiben. Die Wiederherstellung wird
 als neuer Commit dokumentiert, erneut geprüft und über denselben Pages-Workflow
 veröffentlicht.
 
-## Wichtige Grenze des Prototyps
+## Speicherung und wichtige Grenze der Testversion
 
-Die Codes `S` und `A` werden nur im Browser geprüft und sind keine echte
-Zugriffskontrolle. Termine werden noch nicht dauerhaft gespeichert und gehen
-beim Neuladen verloren. Vor einer produktiven Nutzung durch die Klasse sind
-eine Datenbank und echte Rollen beziehungsweise sichere Zugangscodes nötig.
+Die Codes `S` und `A` werden auf dem Server geprüft. Nur eine gültige
+Admin-Sitzung darf Termine schreiben; Schüler-Sitzungen dürfen sie lesen.
+Termine liegen in der gemeinsamen Server-Datenbank und bleiben nach Neuladen,
+Gerätewechsel und WLAN-Wechsel erhalten. Die kurzen Testcodes sind trotzdem
+keine persönlichen Benutzerkonten und sollten vor einem produktiven Einsatz
+durch starke Zugangscodes oder echte Konten ersetzt werden.

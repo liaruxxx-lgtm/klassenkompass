@@ -35,6 +35,8 @@ jobs:
 
       - name: Öffentliche Version bauen
         run: npm run build:public
+        env:
+          VITE_KLASSENKOMPASS_API_BASE_URL: ${{ vars.KLASSENKOMPASS_API_BASE_URL }}
 
       - name: GitHub Pages einrichten
         uses: actions/configure-pages@v5

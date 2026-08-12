@@ -1,8 +1,8 @@
 # Klassenkompass
 
-Reiner Frontend-Prototyp für eine ruhige Jahresübersicht einer achten Klasse.
-Die App zeigt, wie Schüler langfristige Termine sehen und wie Lehrkräfte den
-Jahresrahmen pflegen könnten.
+Servergestützte Testversion für eine ruhige Jahresübersicht einer achten Klasse.
+Lehrkräfte pflegen langfristige Termine, die anschließend für alle Geräte in
+der Schüleransicht verfügbar sind.
 
 ## Lokal starten
 
@@ -36,13 +36,14 @@ Versionen gleich.
 ## Umfang dieses Prototyps
 
 - Zugang, Schüler- und Lehreransicht
-- lokale Demo-Zugangscodes: `S` für Schüler und `A` für Lehrkräfte
+- serverseitig geprüfte Testzugangscodes: `S` für Schüler und `A` für Lehrkräfte
 - dynamisches Formular für Zeiträume und einzelne Termine
 - einfache Pflichtfeld- und Datumsprüfung
 - responsive Darstellung für Handy, Tablet und Desktop
-- ausschließlich flüchtiger React-Zustand
+- gemeinsame, dauerhafte Speicherung in einer Server-Datenbank
 
-Es gibt bewusst keine Datenbank, API, echte Authentifizierung oder dauerhafte
-Speicherung. Die Demo-Codes werden ausschließlich im React-Frontend geprüft und
-sind keine Sicherheitsfunktion. Nach einem Neuladen sind alle eingegebenen
-Termine wieder verschwunden.
+Termine werden über eine Server-API gespeichert und bei jedem Öffnen der
+Schüler- oder Lehreransicht neu geladen. Sie bleiben daher nach einem Neuladen,
+auf anderen Geräten und in anderen WLANs erhalten. Die einfachen Testcodes sind
+noch keine persönlichen Benutzerkonten und sollten vor dem produktiven Einsatz
+durch starke, nur der Klasse bekannte Codes oder echte Konten ersetzt werden.

@@ -16,6 +16,8 @@ test("builds a public GitHub Pages version without an OpenAI login", async () =>
   assert.doesNotMatch(html, /signin-with-chatgpt|auth\.openai\.com/i);
   assert.match(workflow, /actions\/deploy-pages@v4/);
   assert.match(workflow, /npm run build:public/);
+  assert.match(workflow, /VITE_KLASSENKOMPASS_API_BASE_URL/);
+  assert.match(workflow, /KLASSENKOMPASS_API_BASE_URL/);
   assert.match(config, /base: "\/klassenkompass\/"/);
 
   await access(new URL("../public-dist/og.png", import.meta.url));

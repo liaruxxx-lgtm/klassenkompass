@@ -25,37 +25,16 @@ import {
   X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  categories,
+  type Audience,
+  type CalendarEvent,
+  type Category,
+  type EventType,
+  type NewCalendarEvent,
+} from "../lib/calendar-events";
 
 type AppView = "access" | "student" | "teacher";
-type EventType = "period" | "milestone" | "important" | "presentation";
-type Category =
-  | "Epochen"
-  | "Achtklass-Projekt"
-  | "Achtklass-Stück"
-  | "Abgaben"
-  | "Präsentationen";
-type Audience = "Gesamte Klasse" | "Gruppe 1" | "Gruppe 2" | "Andere Gruppe";
-
-type CalendarEvent = {
-  id: string;
-  type: EventType;
-  category: Category;
-  title: string;
-  startDate: string;
-  endDate?: string;
-  time?: string;
-  audience: Audience;
-  location?: string;
-  description?: string;
-};
-
-const categories: Category[] = [
-  "Epochen",
-  "Achtklass-Projekt",
-  "Achtklass-Stück",
-  "Abgaben",
-  "Präsentationen",
-];
 
 const categoryClass: Record<Category, string> = {
   Epochen: "epoch",
@@ -79,10 +58,21 @@ const defaultCategory: Record<EventType, Category> = {
   presentation: "Präsentationen",
 };
 
-const prototypeAccessCodes = {
-  S: "student",
-  A: "teacher",
-} as const satisfies Record<string, Exclude<AppView, "access">>;
+const configuredApiBaseUrl =
+  import.meta.env?.VITE_KLASSENKOMPASS_API_BASE_URL?.trim().replace(/\/$/, "") ?? "";
+
+function apiUrl(path: string) {
+  return `${configuredApiBaseUrl}${path}`;
+}
+
+async function apiError(response: Response, fallback: string) {
+  try {
+    const body = (await response.json()) as { error?: unknown };
+    return typeof body.error === "string" ? body.error : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 function parseLocalDate(value: string) {
   const [year, month, day] = value.split("-").map(Number);
@@ -130,34 +120,44 @@ function PrototypeTag() {
   return (
     <span className="prototype-tag">
       <CircleDot size={12} aria-hidden="true" />
-      Frontend-Prototyp
+      Server-Testversion
     </span>
   );
 }
 
-function AccessView({ onOpen }: { onOpen: (view: AppView) => void }) {
+function AccessView({
+  onAuthenticate,
+}: {
+  onAuthenticate: (code: string) => Promise<void>;
+}) {
   const [accessCode, setAccessCode] = useState("");
   const [accessError, setAccessError] = useState("");
+  const [isChecking, setIsChecking] = useState(false);
   const accessCodeRef = useRef<HTMLInputElement>(null);
 
-  function handleAccessSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleAccessSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedCode = accessCode.trim().toUpperCase();
-    const targetView =
-      prototypeAccessCodes[normalizedCode as keyof typeof prototypeAccessCodes];
-
-    if (targetView) {
-      setAccessError("");
-      onOpen(targetView);
+    if (!normalizedCode) {
+      setAccessError("Bitte einen Zugangscode eingeben.");
+      accessCodeRef.current?.focus();
       return;
     }
 
-    setAccessError(
-      normalizedCode
-        ? "Dieser Zugangscode ist nicht gültig."
-        : "Bitte einen Zugangscode eingeben.",
-    );
-    accessCodeRef.current?.focus();
+    setIsChecking(true);
+    setAccessError("");
+    try {
+      await onAuthenticate(normalizedCode);
+    } catch (error) {
+      setAccessError(
+        error instanceof Error
+          ? error.message
+          : "Der Zugang konnte nicht geöffnet werden.",
+      );
+      accessCodeRef.current?.focus();
+    } finally {
+      setIsChecking(false);
+    }
   }
 
   return (
@@ -234,10 +234,10 @@ function AccessView({ onOpen }: { onOpen: (view: AppView) => void }) {
                 aria-invalid={Boolean(accessError)}
                 aria-describedby={accessError ? "code-hint code-error" : "code-hint"}
               />
-              <span className="code-field-status">Prototyp</span>
+              <span className="code-field-status">Serverprüfung</span>
             </div>
             <p className="field-hint" id="code-hint">
-              Der Code wird nur in dieser Testversion lokal im Browser geprüft.
+              Der Code wird auf dem Server geprüft und öffnet die passende Ansicht.
             </p>
             {accessError && (
               <p className="error-text access-code-error" id="code-error" role="alert">
@@ -246,8 +246,12 @@ function AccessView({ onOpen }: { onOpen: (view: AppView) => void }) {
             )}
 
             <div className="access-actions">
-              <button className="button button-primary button-wide" type="submit">
-                Klassenbereich öffnen
+              <button
+                className="button button-primary button-wide"
+                type="submit"
+                disabled={isChecking}
+              >
+                {isChecking ? "Zugang wird geprüft …" : "Klassenbereich öffnen"}
                 <ArrowRight size={18} aria-hidden="true" />
               </button>
             </div>
@@ -256,8 +260,8 @@ function AccessView({ onOpen }: { onOpen: (view: AppView) => void }) {
           <div className="prototype-warning" role="note">
             <ShieldAlert size={18} aria-hidden="true" />
             <p>
-              <strong>Nur zur Vorschau:</strong> Die Codes trennen die Ansichten
-              nur im Frontend. Das ist noch keine echte Anmeldung oder Sicherheit.
+              <strong>Testzugang:</strong> Die Codes werden serverseitig geprüft,
+              sind aber noch keine persönlichen Benutzerkonten.
             </p>
           </div>
         </section>
@@ -472,8 +476,8 @@ function EventRow({
       </div>
       {!compact && (
         <span className="temporary-label">
-          <Sparkles size={13} aria-hidden="true" />
-          nur temporär
+          <Check size={13} aria-hidden="true" />
+          gespeichert
         </span>
       )}
     </article>
@@ -660,7 +664,7 @@ function TeacherView({
             <strong>Wenig Pflege, viel Wirkung.</strong> Epochen, Meilensteine,
             Abgaben, Proben und Aufführungen genügen – kein täglicher Stundenplan.
           </p>
-          <span className="session-note">Nur für diese Sitzung</span>
+          <span className="session-note">Auf dem Server gespeichert</span>
         </div>
 
         {notice && (
@@ -751,7 +755,7 @@ function EventForm({
   onSave,
 }: {
   onClose: () => void;
-  onSave: (event: CalendarEvent) => void;
+  onSave: (event: NewCalendarEvent) => Promise<void>;
 }) {
   const [type, setType] = useState<EventType>("period");
   const [category, setCategory] = useState<Category>("Epochen");
@@ -763,6 +767,8 @@ function EventForm({
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
+  const [saveError, setSaveError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -803,25 +809,35 @@ function EventForm({
     return Object.keys(nextErrors).length === 0;
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!validate()) {
       if (!title.trim()) titleRef.current?.focus();
       return;
     }
 
-    onSave({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      type,
-      category,
-      title: title.trim(),
-      startDate,
-      ...(type === "period" && endDate ? { endDate } : {}),
-      ...(time ? { time } : {}),
-      audience,
-      ...(location.trim() ? { location: location.trim() } : {}),
-      ...(description.trim() ? { description: description.trim() } : {}),
-    });
+    setIsSaving(true);
+    setSaveError("");
+    try {
+      await onSave({
+        type,
+        category,
+        title: title.trim(),
+        startDate,
+        ...(type === "period" && endDate ? { endDate } : {}),
+        ...(time ? { time } : {}),
+        audience,
+        ...(location.trim() ? { location: location.trim() } : {}),
+        ...(description.trim() ? { description: description.trim() } : {}),
+      });
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : "Der Termin konnte nicht gespeichert werden.",
+      );
+      setIsSaving(false);
+    }
   }
 
   const typeChoices: { type: EventType; hint: string }[] = [
@@ -1049,14 +1065,24 @@ function EventForm({
           <footer className="form-footer">
             <p>
               <Sparkles size={14} aria-hidden="true" />
-              Wird nur vorübergehend angezeigt
+              Wird dauerhaft gespeichert und für die Klasse sichtbar
             </p>
+            {saveError && (
+              <p className="error-text form-save-error" role="alert">
+                {saveError}
+              </p>
+            )}
             <div>
-              <button className="button button-ghost" type="button" onClick={onClose}>
+              <button
+                className="button button-ghost"
+                type="button"
+                onClick={onClose}
+                disabled={isSaving}
+              >
                 Abbrechen
               </button>
-              <button className="button button-primary" type="submit">
-                Termin hinzufügen
+              <button className="button button-primary" type="submit" disabled={isSaving}>
+                {isSaving ? "Wird gespeichert …" : "Termin hinzufügen"}
               </button>
             </div>
           </footer>
@@ -1070,7 +1096,7 @@ function PrototypeFooter() {
   return (
     <footer className="prototype-footer">
       <PrototypeTag />
-      <span>Keine Daten werden dauerhaft gespeichert.</span>
+      <span>Termine werden dauerhaft auf dem Server gespeichert.</span>
     </footer>
   );
 }
@@ -1078,25 +1104,74 @@ function PrototypeFooter() {
 export default function KlassenkompassApp() {
   const [view, setView] = useState<AppView>("access");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [sessionToken, setSessionToken] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [notice, setNotice] = useState("");
 
   function changeView(nextView: AppView) {
     setView(nextView);
     setNotice("");
+    if (nextView === "access") {
+      setSessionToken("");
+      setEvents([]);
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function saveEvent(event: CalendarEvent) {
-    setEvents((current) => [...current, event]);
+  async function authenticate(code: string) {
+    const accessResponse = await fetch(apiUrl("/api/access"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    if (!accessResponse.ok) {
+      throw new Error(
+        await apiError(accessResponse, "Dieser Zugangscode ist nicht gültig."),
+      );
+    }
+
+    const session = (await accessResponse.json()) as {
+      role: Exclude<AppView, "access">;
+      token: string;
+    };
+    const eventsResponse = await fetch(apiUrl("/api/events"), {
+      headers: { Authorization: `Bearer ${session.token}` },
+    });
+    if (!eventsResponse.ok) {
+      throw new Error(
+        await apiError(eventsResponse, "Die Termine konnten nicht geladen werden."),
+      );
+    }
+
+    const body = (await eventsResponse.json()) as { events: CalendarEvent[] };
+    setEvents(body.events);
+    setSessionToken(session.token);
+    changeView(session.role);
+  }
+
+  async function saveEvent(event: NewCalendarEvent) {
+    const response = await fetch(apiUrl("/api/events"), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(event),
+    });
+    if (!response.ok) {
+      throw new Error(await apiError(response, "Der Termin konnte nicht gespeichert werden."));
+    }
+
+    const body = (await response.json()) as { event: CalendarEvent };
+    setEvents((current) => [...current, body.event]);
     setIsFormOpen(false);
     setView("teacher");
-    setNotice(`„${event.title}“ wurde vorübergehend hinzugefügt.`);
+    setNotice(`„${body.event.title}“ wurde dauerhaft gespeichert.`);
   }
 
   return (
     <>
-      {view === "access" && <AccessView onOpen={changeView} />}
+      {view === "access" && <AccessView onAuthenticate={authenticate} />}
       {view === "student" && (
         <StudentView events={events} onAccess={() => changeView("access")} />
       )}

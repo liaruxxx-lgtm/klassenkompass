@@ -26,6 +26,43 @@ Object.defineProperty(globalThis, "document", {
   },
 });
 
+const persistedEvents = [];
+
+Object.defineProperty(globalThis, "fetch", {
+  configurable: true,
+  value: async (input, init = {}) => {
+    const url = String(input);
+    const method = init.method ?? "GET";
+
+    if (url.endsWith("/api/access") && method === "POST") {
+      const { code } = JSON.parse(init.body);
+      const role = code.toUpperCase() === "S" ? "student" : code.toUpperCase() === "A" ? "teacher" : null;
+      if (!role) {
+        return Response.json(
+          { error: "Dieser Zugangscode ist nicht gültig." },
+          { status: 401 },
+        );
+      }
+      return Response.json({ role, token: `server-token-${role}` });
+    }
+
+    if (url.endsWith("/api/events") && method === "GET") {
+      return Response.json({ events: [...persistedEvents] });
+    }
+
+    if (url.endsWith("/api/events") && method === "POST") {
+      const event = {
+        id: `server-event-${persistedEvents.length + 1}`,
+        ...JSON.parse(init.body),
+      };
+      persistedEvents.push(event);
+      return Response.json({ event }, { status: 201 });
+    }
+
+    return Response.json({ error: "Nicht gefunden" }, { status: 404 });
+  },
+});
+
 function textOf(node) {
   if (typeof node === "string") return node;
   return node.children.map(textOf).join("");
@@ -59,7 +96,7 @@ async function change(input, value) {
 
 async function submit(renderer) {
   await act(async () => {
-    renderer.root.findByProps({ className: "event-form" }).props.onSubmit({
+    await renderer.root.findByProps({ className: "event-form" }).props.onSubmit({
       preventDefault() {},
     });
   });
@@ -67,13 +104,14 @@ async function submit(renderer) {
 
 async function submitAccess(renderer) {
   await act(async () => {
-    renderer.root.findByProps({ className: "access-form" }).props.onSubmit({
+    await renderer.root.findByProps({ className: "access-form" }).props.onSubmit({
       preventDefault() {},
     });
   });
 }
 
-test("supports the complete temporary prototype flow", async () => {
+test("loads and saves calendar events through the shared server API", async () => {
+  persistedEvents.length = 0;
   let renderer;
   await act(async () => {
     renderer = create(React.createElement(KlassenkompassApp));
@@ -147,7 +185,7 @@ test("supports the complete temporary prototype flow", async () => {
 
   assert.equal(renderer.root.findAllByProps({ role: "dialog" }).length, 0);
   assert.match(pageText(renderer), /Prüftermin/);
-  assert.match(pageText(renderer), /nur temporär/i);
+  assert.match(pageText(renderer), /gespeichert/i);
   assert.match(pageText(renderer), /10:30 Uhr/);
 
   await click(findButton(renderer.root, "Zugang wechseln", { exact: true }));
@@ -167,6 +205,10 @@ test("supports the complete temporary prototype flow", async () => {
   });
   assert.match(pageText(freshRenderer), /Klassenbereich öffnen/);
   assert.doesNotMatch(pageText(freshRenderer), /Prüftermin/);
+
+  await change(freshRenderer.root.findByProps({ id: "access-code" }), "S");
+  await submitAccess(freshRenderer);
+  assert.match(pageText(freshRenderer), /Prüftermin/);
 
   await act(async () => {
     freshRenderer.unmount();

@@ -37,46 +37,50 @@ test("server-renders the Klassenkompass access view", async () => {
   assert.match(html, /name="twitter:card" content="summary_large_image"/i);
   assert.match(html, /Klassenkompass/);
   assert.match(html, /Klassenbereich öffnen/);
-  assert.match(html, /lokal im Browser geprüft/i);
-  assert.match(html, /noch keine echte Anmeldung oder Sicherheit/i);
+  assert.match(html, /auf dem Server geprüft/i);
+  assert.match(html, /noch keine persönlichen Benutzerkonten/i);
   assert.doesNotMatch(html, /Schüleransicht öffnen|Lehreransicht öffnen/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
 
-test("keeps the prototype empty, temporary and free of backend wiring", async () => {
-  const [app, page, layout, packageJson, css, hostingConfig] = await Promise.all([
+test("uses a server API and D1 for durable shared calendar events", async () => {
+  const [app, page, layout, packageJson, css, hostingConfig, eventRoute, calendarSource, schema, migration] = await Promise.all([
     readFile(new URL("../app/KlassenkompassApp.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/events/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/calendar-events.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0000_sharp_silhouette.sql", import.meta.url), "utf8"),
   ]);
 
   assert.match(app, /useState<CalendarEvent\[]>\(\[\]\)/);
-  assert.match(app, /S:\s*"student"/);
-  assert.match(app, /A:\s*"teacher"/);
-  assert.match(app, /trim\(\)\.toUpperCase\(\)/);
+  assert.match(app, /fetch\(apiUrl\("\/api\/access"\)/);
+  assert.match(app, /fetch\(apiUrl\("\/api\/events"\)/);
   assert.match(app, /Noch keine Epoche eingetragen/);
   assert.match(app, /Noch keine Termine vorhanden/);
-  assert.match(app, /Keine Daten werden dauerhaft gespeichert/);
+  assert.match(app, /dauerhaft auf dem Server gespeichert/);
   assert.match(app, /type === "period"/);
   assert.match(app, /endDate < startDate/);
-  assert.match(app, /"Epochen"[\s\S]*"Achtklass-Projekt"[\s\S]*"Achtklass-Stück"[\s\S]*"Abgaben"[\s\S]*"Präsentationen"/);
+  assert.match(calendarSource, /"Epochen"[\s\S]*"Achtklass-Projekt"[\s\S]*"Achtklass-Stück"[\s\S]*"Abgaben"[\s\S]*"Präsentationen"/);
   assert.match(app, /"Epoche \/ Zeitraum"/);
   assert.match(app, /"Abgabe oder Meilenstein"/);
   assert.match(app, /"Wichtiger Termin"/);
   assert.match(app, /"Probe oder Präsentation"/);
   assert.doesNotMatch(app, /\b20\d{2}-\d{2}-\d{2}\b|z\. B\./);
-  assert.doesNotMatch(app, /localStorage|sessionStorage|fetch\(|axios|supabase|firebase/i);
+  assert.doesNotMatch(app, /localStorage|sessionStorage|axios|supabase|firebase/i);
   assert.match(page, /<KlassenkompassApp \/>/);
   assert.match(layout, /<html lang="de">/);
-  assert.doesNotMatch(packageJson, /react-loading-skeleton|drizzle|axios|supabase|firebase/i);
+  assert.match(packageJson, /drizzle-orm/);
+  assert.doesNotMatch(packageJson, /react-loading-skeleton|axios|supabase|firebase/i);
   const hosting = JSON.parse(hostingConfig);
   assert.match(hosting.project_id, /^appgprj_[a-z0-9]+$/);
   assert.deepEqual(
     { d1: hosting.d1, r2: hosting.r2 },
-    { d1: null, r2: null },
+    { d1: "DB", r2: null },
   );
   assert.deepEqual(Object.keys(hosting).sort(), ["d1", "project_id", "r2"]);
   assert.match(css, /@media \(max-width: 900px\)/);
@@ -86,10 +90,13 @@ test("keeps the prototype empty, temporary and free of backend wiring", async ()
   assert.doesNotMatch(css, /@keyframes/);
 
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
+  assert.match(eventRoute, /role !== "teacher"/);
+  assert.match(eventRoute, /insert\(calendarEvents\)/);
+  assert.match(schema, /calendar_events/);
+  assert.match(schema, /access_sessions/);
+  assert.match(migration, /CREATE TABLE `calendar_events`/);
+  assert.match(migration, /CREATE TABLE `access_sessions`/);
   await assert.rejects(access(new URL("../app/chatgpt-auth.ts", import.meta.url)));
-  await assert.rejects(access(new URL("../app/api", import.meta.url)));
-  await assert.rejects(access(new URL("../db", import.meta.url)));
-  await assert.rejects(access(new URL("../drizzle", import.meta.url)));
   await access(new URL("../app/KlassenkompassApp.tsx", import.meta.url));
   await access(projectRoot);
 });
