@@ -5,6 +5,7 @@ Stand: 12. August 2026
 ## Öffentliche Adresse und Zustand
 
 - Öffentliche Website: <https://liaruxxx-lgtm.github.io/klassenkompass/>
+- Öffentlicher Serverdienst: <https://klassenkompass-online.liarux.chatgpt.site>
 - Quellcode und Versionsverlauf:
   <https://github.com/liaruxxx-lgtm/klassenkompass>
 - Öffentliche Oberfläche: GitHub Pages über HTTPS
