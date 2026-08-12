@@ -6,6 +6,8 @@ import KlassenkompassApp from "../app/KlassenkompassApp.tsx";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
+let lastScrolledSection = "";
+
 Object.defineProperty(globalThis, "window", {
   configurable: true,
   value: {
@@ -22,6 +24,16 @@ Object.defineProperty(globalThis, "document", {
       style: {
         overflow: "",
       },
+    },
+    getElementById(id) {
+      return {
+        getBoundingClientRect() {
+          return { top: id === "ueberblick" ? 0 : 1000 };
+        },
+        scrollIntoView() {
+          lastScrolledSection = id;
+        },
+      };
     },
   },
 });
@@ -181,6 +193,11 @@ test("loads and saves calendar events through the shared server API", async () =
   await change(renderer.root.findByProps({ id: "event-title" }), "Prüftermin");
   await change(renderer.root.findByProps({ id: "single-date" }), "2099-01-15");
   await change(renderer.root.findByProps({ id: "event-time" }), "10:30");
+  await change(renderer.root.findByProps({ id: "event-location" }), "Großer Saal");
+  await change(
+    renderer.root.findByProps({ id: "event-description" }),
+    "Bitte zehn Minuten früher da sein.",
+  );
   await submit(renderer);
 
   assert.equal(renderer.root.findAllByProps({ role: "dialog" }).length, 0);
@@ -194,6 +211,29 @@ test("loads and saves calendar events through the shared server API", async () =
   assert.match(pageText(renderer), /Als Nächstes/);
   assert.match(pageText(renderer), /Prüftermin/);
   assert.match(pageText(renderer), /Chronologische Übersicht/);
+
+  const mobileNav = renderer.root.findByProps({ className: "mobile-tabbar" });
+  const mobileNavButtons = mobileNav.findAllByType("button");
+  assert.deepEqual(mobileNavButtons.map(textOf), ["Überblick", "Termine", "Jahresblick"]);
+  assert.equal(mobileNavButtons[0].props["aria-current"], "page");
+  await click(mobileNavButtons[1]);
+  assert.equal(lastScrolledSection, "termine");
+  assert.equal(mobileNavButtons[1].props["aria-current"], "page");
+  assert.equal(mobileNavButtons[0].props["aria-current"], undefined);
+
+  const detailTargets = renderer.root.findAllByProps({
+    "aria-label": "Details zu „Prüftermin“ öffnen",
+  });
+  assert.ok(detailTargets.length >= 2);
+  await click(detailTargets[0]);
+  assert.equal(renderer.root.findAllByProps({ role: "dialog" }).length, 1);
+  assert.match(pageText(renderer), /Termindetails/);
+  assert.match(pageText(renderer), /15. Januar 2099/);
+  assert.match(pageText(renderer), /10:30 Uhr/);
+  assert.match(pageText(renderer), /Großer Saal/);
+  assert.match(pageText(renderer), /Bitte zehn Minuten früher da sein/);
+  await click(renderer.root.findByProps({ "aria-label": "Detailansicht schließen" }));
+  assert.equal(renderer.root.findAllByProps({ role: "dialog" }).length, 0);
 
   await act(async () => {
     renderer.unmount();

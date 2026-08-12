@@ -19,15 +19,19 @@ test("provides a dedicated portrait-phone navigation and safe viewport", async (
   assert.match(layout, /themeColor:\s*"#f7f5ef"/i);
 
   assert.match(app, /className="mobile-tabbar"/);
-  assert.match(app, /href="#ueberblick"/);
-  assert.match(app, /href="#termine"/);
-  assert.match(app, /href="#jahresblick"/);
+  assert.match(app, /section: "ueberblick"/);
+  assert.match(app, /section: "termine"/);
+  assert.match(app, /section: "jahresblick"/);
+  assert.match(app, /aria-current=\{isActive \? "page" : undefined\}/);
+  assert.match(app, /scrollIntoView/);
   assert.match(app, /id="ueberblick"/);
   assert.match(app, /id="termine"/);
   assert.match(app, /id="jahresblick"/);
   assert.match(app, /enterKeyHint="go"/);
 
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.mobile-tabbar\s*\{[\s\S]*position:\s*fixed/);
+  assert.match(css, /\.mobile-tabbar button\.active\s*\{/);
+  assert.doesNotMatch(css, /\.mobile-tabbar a:first-child/);
   assert.match(css, /min-height:\s*50px/);
   assert.match(css, /font-size:\s*16px/);
   assert.match(css, /100dvh/);

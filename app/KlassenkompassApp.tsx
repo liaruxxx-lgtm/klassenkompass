@@ -35,6 +35,7 @@ import {
 } from "../lib/calendar-events";
 
 type AppView = "access" | "student" | "teacher";
+type StudentSection = "ueberblick" | "termine" | "jahresblick";
 
 const categoryClass: Record<Category, string> = {
   Epochen: "epoch",
@@ -333,9 +334,36 @@ function CategoryBadge({ category }: { category: Category }) {
   );
 }
 
-function CurrentPeriodCard({ event }: { event?: CalendarEvent }) {
+function EventOpenTarget({
+  event,
+  onSelect,
+}: {
+  event: CalendarEvent;
+  onSelect: (event: CalendarEvent) => void;
+}) {
   return (
-    <article className="feature-card current-card">
+    <button
+      className="event-open-target"
+      type="button"
+      onClick={() => onSelect(event)}
+      aria-label={`Details zu „${event.title}“ öffnen`}
+    >
+      <span className="visually-hidden">Details öffnen</span>
+    </button>
+  );
+}
+
+function CurrentPeriodCard({
+  event,
+  onSelect,
+}: {
+  event?: CalendarEvent;
+  onSelect: (event: CalendarEvent) => void;
+}) {
+  return (
+    <article
+      className={`feature-card current-card ${event ? "event-is-openable" : ""}`}
+    >
       <div className="feature-card-topline">
         <span className="feature-label">
           <BookOpen size={16} aria-hidden="true" />
@@ -360,13 +388,22 @@ function CurrentPeriodCard({ event }: { event?: CalendarEvent }) {
           </div>
         </div>
       )}
+      {event && <EventOpenTarget event={event} onSelect={onSelect} />}
     </article>
   );
 }
 
-function NextEventCard({ event }: { event?: CalendarEvent }) {
+function NextEventCard({
+  event,
+  onSelect,
+}: {
+  event?: CalendarEvent;
+  onSelect: (event: CalendarEvent) => void;
+}) {
   return (
-    <article className="feature-card next-card">
+    <article
+      className={`feature-card next-card ${event ? "event-is-openable" : ""}`}
+    >
       <div className="feature-card-topline">
         <span className="feature-label">
           <Flag size={16} aria-hidden="true" />
@@ -393,11 +430,18 @@ function NextEventCard({ event }: { event?: CalendarEvent }) {
           </div>
         </div>
       )}
+      {event && <EventOpenTarget event={event} onSelect={onSelect} />}
     </article>
   );
 }
 
-function UpcomingEvents({ events }: { events: CalendarEvent[] }) {
+function UpcomingEvents({
+  events,
+  onSelect,
+}: {
+  events: CalendarEvent[];
+  onSelect: (event: CalendarEvent) => void;
+}) {
   return (
     <section
       className="dashboard-section"
@@ -427,7 +471,7 @@ function UpcomingEvents({ events }: { events: CalendarEvent[] }) {
       ) : (
         <div className="upcoming-list">
           {events.slice(0, 3).map((event) => (
-            <EventRow key={event.id} event={event} compact />
+            <EventRow key={event.id} event={event} compact onSelect={onSelect} />
           ))}
         </div>
       )}
@@ -438,9 +482,11 @@ function UpcomingEvents({ events }: { events: CalendarEvent[] }) {
 function EventRow({
   event,
   compact = false,
+  onSelect,
 }: {
   event: CalendarEvent;
   compact?: boolean;
+  onSelect?: (event: CalendarEvent) => void;
 }) {
   const date = parseLocalDate(event.startDate);
   const day = new Intl.DateTimeFormat("de-DE", { day: "2-digit" }).format(date);
@@ -449,7 +495,9 @@ function EventRow({
     .replace(".", "");
 
   return (
-    <article className={`event-row ${compact ? "event-row-compact" : ""}`}>
+    <article
+      className={`event-row ${compact ? "event-row-compact" : ""} ${onSelect ? "event-is-openable" : ""}`}
+    >
       <div className="event-date-block" aria-label={formatDate(event.startDate)}>
         <strong>{day}</strong>
         <span>{month}</span>
@@ -480,11 +528,18 @@ function EventRow({
           gespeichert
         </span>
       )}
+      {onSelect && <EventOpenTarget event={event} onSelect={onSelect} />}
     </article>
   );
 }
 
-function Timeline({ events }: { events: CalendarEvent[] }) {
+function Timeline({
+  events,
+  onSelect,
+}: {
+  events: CalendarEvent[];
+  onSelect: (event: CalendarEvent) => void;
+}) {
   return (
     <section className="timeline-card" aria-labelledby="timeline-title">
       <div className="section-heading-row timeline-heading">
@@ -508,7 +563,7 @@ function Timeline({ events }: { events: CalendarEvent[] }) {
       ) : (
         <div className="timeline-list">
           {events.map((event) => (
-            <div className="timeline-entry" key={event.id}>
+            <div className="timeline-entry event-is-openable" key={event.id}>
               <span
                 className={`timeline-dot category-${categoryClass[event.category]}`}
                 aria-hidden="true"
@@ -518,6 +573,7 @@ function Timeline({ events }: { events: CalendarEvent[] }) {
                 <strong>{event.title}</strong>
                 <small>{event.category}</small>
               </div>
+              <EventOpenTarget event={event} onSelect={onSelect} />
             </div>
           ))}
         </div>
@@ -547,22 +603,151 @@ function CategoryOverview({ events }: { events: CalendarEvent[] }) {
   );
 }
 
-function MobileStudentNav() {
+function MobileStudentNav({
+  activeSection,
+  onNavigate,
+}: {
+  activeSection: StudentSection;
+  onNavigate: (section: StudentSection) => void;
+}) {
+  const items: {
+    section: StudentSection;
+    label: string;
+    icon: typeof BookOpen;
+  }[] = [
+    { section: "ueberblick", label: "Überblick", icon: BookOpen },
+    { section: "termine", label: "Termine", icon: CalendarDays },
+    { section: "jahresblick", label: "Jahresblick", icon: Compass },
+  ];
+
   return (
     <nav className="mobile-tabbar" aria-label="Schnellnavigation">
-      <a href="#ueberblick">
-        <BookOpen size={20} aria-hidden="true" />
-        <span>Überblick</span>
-      </a>
-      <a href="#termine">
-        <CalendarDays size={20} aria-hidden="true" />
-        <span>Termine</span>
-      </a>
-      <a href="#jahresblick">
-        <Compass size={20} aria-hidden="true" />
-        <span>Jahresblick</span>
-      </a>
+      {items.map((item) => {
+        const Icon = item.icon;
+        const isActive = activeSection === item.section;
+        return (
+          <button
+            key={item.section}
+            className={isActive ? "active" : ""}
+            type="button"
+            onClick={() => onNavigate(item.section)}
+            aria-current={isActive ? "page" : undefined}
+          >
+            <Icon size={20} aria-hidden="true" />
+            <span>{item.label}</span>
+          </button>
+        );
+      })}
     </nav>
+  );
+}
+
+function EventDetails({
+  event,
+  onClose,
+}: {
+  event: CalendarEvent;
+  onClose: () => void;
+}) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+    const handleKeyDown = (keyboardEvent: KeyboardEvent) => {
+      if (keyboardEvent.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="modal-backdrop detail-backdrop">
+      <section
+        className="event-detail-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="event-detail-title"
+      >
+        <header className="detail-header">
+          <div>
+            <p className="overline">Termindetails</p>
+            <CategoryBadge category={event.category} />
+          </div>
+          <button
+            ref={closeButtonRef}
+            className="icon-button"
+            type="button"
+            onClick={onClose}
+            aria-label="Detailansicht schließen"
+          >
+            <X size={21} aria-hidden="true" />
+          </button>
+        </header>
+
+        <div className="detail-content">
+          <div className="detail-title-block">
+            <span>{eventTypeLabels[event.type]}</span>
+            <h2 id="event-detail-title">{event.title}</h2>
+          </div>
+
+          <dl className="detail-facts">
+            <div>
+              <dt>
+                <CalendarDays size={18} aria-hidden="true" />
+                {event.type === "period" ? "Beginn" : "Datum"}
+              </dt>
+              <dd>{formatDate(event.startDate)}</dd>
+            </div>
+            {event.type === "period" && event.endDate && (
+              <div>
+                <dt>
+                  <Calendar size={18} aria-hidden="true" />
+                  Ende
+                </dt>
+                <dd>{formatDate(event.endDate)}</dd>
+              </div>
+            )}
+            <div>
+              <dt>
+                <Clock3 size={18} aria-hidden="true" />
+                Uhrzeit
+              </dt>
+              <dd>{event.time ? `${event.time} Uhr` : "Noch nicht angegeben"}</dd>
+            </div>
+            <div>
+              <dt>
+                <Users size={18} aria-hidden="true" />
+                Für wen
+              </dt>
+              <dd>{event.audience}</dd>
+            </div>
+            <div className="detail-fact-wide">
+              <dt>
+                <MapPin size={18} aria-hidden="true" />
+                Ort
+              </dt>
+              <dd>{event.location || "Noch nicht angegeben"}</dd>
+            </div>
+          </dl>
+
+          <section className="detail-description" aria-labelledby="detail-description-title">
+            <h3 id="detail-description-title">Weitere Informationen</h3>
+            <p>{event.description || "Zu diesem Termin gibt es noch keine weiteren Informationen."}</p>
+          </section>
+        </div>
+
+        <footer className="detail-footer">
+          <button className="button button-primary" type="button" onClick={onClose}>
+            Schließen
+          </button>
+        </footer>
+      </section>
+    </div>
   );
 }
 
@@ -573,6 +758,8 @@ function StudentView({
   events: CalendarEvent[];
   onAccess: () => void;
 }) {
+  const [activeSection, setActiveSection] = useState<StudentSection>("ueberblick");
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent>();
   const today = dateKey(new Date());
   const sortedEvents = useMemo(() => [...events].sort(compareEvents), [events]);
   const currentPeriod = sortedEvents.find(
@@ -583,6 +770,44 @@ function StudentView({
   );
   const upcomingEvents = sortedEvents.filter((event) => event.startDate >= today);
   const nextEvent = upcomingEvents.find((event) => event.id !== currentPeriod?.id);
+
+  useEffect(() => {
+    if (typeof document.getElementById !== "function") return;
+    const sections = (["ueberblick", "termine", "jahresblick"] as const)
+      .map((section) => ({ section, element: document.getElementById(section) }))
+      .filter(
+        (entry): entry is { section: StudentSection; element: HTMLElement } =>
+          Boolean(entry.element),
+      );
+    if (sections.length === 0) return;
+
+    const updateActiveSection = () => {
+      const marker = (window.innerHeight || 800) * 0.28;
+      let nextSection = sections[0].section;
+      for (const entry of sections) {
+        if (entry.element.getBoundingClientRect().top <= marker) {
+          nextSection = entry.section;
+        }
+      }
+      setActiveSection(nextSection);
+    };
+
+    updateActiveSection();
+    window.addEventListener("scroll", updateActiveSection, { passive: true });
+    window.addEventListener("resize", updateActiveSection);
+    return () => {
+      window.removeEventListener("scroll", updateActiveSection);
+      window.removeEventListener("resize", updateActiveSection);
+    };
+  }, []);
+
+  function navigateTo(section: StudentSection) {
+    setActiveSection(section);
+    document.getElementById(section)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
 
   return (
     <div className="app-page student-page">
@@ -600,19 +825,22 @@ function StudentView({
         </section>
 
         <div className="feature-grid">
-          <CurrentPeriodCard event={currentPeriod} />
-          <NextEventCard event={nextEvent} />
+          <CurrentPeriodCard event={currentPeriod} onSelect={setSelectedEvent} />
+          <NextEventCard event={nextEvent} onSelect={setSelectedEvent} />
         </div>
 
-        <UpcomingEvents events={upcomingEvents} />
+        <UpcomingEvents events={upcomingEvents} onSelect={setSelectedEvent} />
 
         <div className="lower-dashboard-grid" id="jahresblick">
-          <Timeline events={sortedEvents} />
+          <Timeline events={sortedEvents} onSelect={setSelectedEvent} />
           <CategoryOverview events={events} />
         </div>
       </main>
       <PrototypeFooter />
-      <MobileStudentNav />
+      <MobileStudentNav activeSection={activeSection} onNavigate={navigateTo} />
+      {selectedEvent && (
+        <EventDetails event={selectedEvent} onClose={() => setSelectedEvent(undefined)} />
+      )}
     </div>
   );
 }
