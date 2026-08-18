@@ -3,5 +3,6 @@ declare namespace Cloudflare {
     DB: D1Database;
     STUDENT_ACCESS_CODE?: string;
     ADMIN_ACCESS_CODE?: string;
+    AUTH_RATE_LIMIT_SECRET?: string;
   }
 }

@@ -1,4 +1,8 @@
-import { createAccessSession } from "../../../lib/server-auth";
+import {
+  AccessRateLimitError,
+  createAccessSession,
+  revokeAccessSession,
+} from "../../../lib/server-auth";
 import { jsonResponse, optionsResponse } from "../../../lib/api-response";
 
 export function OPTIONS(request: Request) {
@@ -9,7 +13,7 @@ export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as { code?: unknown };
     const code = typeof payload.code === "string" ? payload.code : "";
-    if (!code.trim()) {
+    if (!code.trim() || code.length > 128) {
       return jsonResponse(
         request,
         { error: "Bitte einen Zugangscode eingeben." },
@@ -17,7 +21,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const session = await createAccessSession(code);
+    const session = await createAccessSession(request, code);
     if (!session) {
       return jsonResponse(
         request,
@@ -28,6 +32,17 @@ export async function POST(request: Request) {
 
     return jsonResponse(request, session);
   } catch (error) {
+    if (error instanceof AccessRateLimitError) {
+      return jsonResponse(
+        request,
+        { error: "Zu viele falsche Versuche. Bitte später erneut versuchen." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(error.retryAfterSeconds) },
+        },
+      );
+    }
+
     return jsonResponse(
       request,
       {
@@ -36,6 +51,19 @@ export async function POST(request: Request) {
             ? error.message
             : "Der Zugang konnte nicht geprüft werden.",
       },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    await revokeAccessSession(request);
+    return jsonResponse(request, { ok: true });
+  } catch {
+    return jsonResponse(
+      request,
+      { error: "Die Sitzung konnte nicht beendet werden." },
       { status: 500 },
     );
   }

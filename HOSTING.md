@@ -107,9 +107,11 @@ veröffentlicht.
 
 ## Speicherung und wichtige Grenze der Testversion
 
-Die Codes `S` und `A` werden auf dem Server geprüft. Nur eine gültige
-Admin-Sitzung darf Termine schreiben; Schüler-Sitzungen dürfen sie lesen.
-Termine liegen in der gemeinsamen Server-Datenbank und bleiben nach Neuladen,
-Gerätewechsel und WLAN-Wechsel erhalten. Die kurzen Testcodes sind trotzdem
-keine persönlichen Benutzerkonten und sollten vor einem produktiven Einsatz
-durch starke Zugangscodes oder echte Konten ersetzt werden.
+Die getrennten Schüler- und Admin-Codes werden ausschließlich auf dem Server
+geprüft. Nur eine gültige Admin-Sitzung darf Termine schreiben;
+Schüler-Sitzungen dürfen sie lesen. Termine liegen in der gemeinsamen
+Server-Datenbank und bleiben nach Neuladen, Gerätewechsel und WLAN-Wechsel
+erhalten. Die produktiven Codes gehören nur in die geschützten
+Servereinstellungen und in die lokale, von Git ignorierte Passwortdatei. Sie
+dürfen niemals in GitHub, Dokumentation oder Screenshots eingetragen werden.
+Wiederholte Fehlversuche werden vorübergehend blockiert.

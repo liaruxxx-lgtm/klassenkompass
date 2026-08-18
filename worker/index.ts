@@ -18,6 +18,7 @@ interface Env {
   };
   STUDENT_ACCESS_CODE?: string;
   ADMIN_ACCESS_CODE?: string;
+  AUTH_RATE_LIMIT_SECRET?: string;
 }
 
 interface ExecutionContext {

@@ -220,12 +220,13 @@ function AccessView({
                 ref={accessCodeRef}
                 id="access-code"
                 className={`text-input code-input ${accessError ? "input-error" : ""}`}
-                type="text"
+                type="password"
                 inputMode="text"
                 enterKeyHint="go"
                 autoCapitalize="characters"
                 autoComplete="off"
                 spellCheck={false}
+                maxLength={128}
                 value={accessCode}
                 onChange={(event) => {
                   setAccessCode(event.target.value.toUpperCase());
@@ -238,7 +239,7 @@ function AccessView({
               <span className="code-field-status">Serverprüfung</span>
             </div>
             <p className="field-hint" id="code-hint">
-              Der Code wird auf dem Server geprüft und öffnet die passende Ansicht.
+              Erst nach erfolgreicher Serverprüfung werden die Termine geladen.
             </p>
             {accessError && (
               <p className="error-text access-code-error" id="code-error" role="alert">
@@ -261,8 +262,8 @@ function AccessView({
           <div className="prototype-warning" role="note">
             <ShieldAlert size={18} aria-hidden="true" />
             <p>
-              <strong>Testzugang:</strong> Die Codes werden serverseitig geprüft,
-              sind aber noch keine persönlichen Benutzerkonten.
+              <strong>Geschützter Zugang:</strong> Termine werden erst nach einer
+              erfolgreichen Prüfung vom Server ausgeliefert.
             </p>
           </div>
         </section>
@@ -1397,16 +1398,31 @@ export default function KlassenkompassApp() {
     setNotice(`„${body.event.title}“ wurde dauerhaft gespeichert.`);
   }
 
+  async function leaveAccess() {
+    const token = sessionToken;
+    changeView("access");
+    if (!token) return;
+
+    try {
+      await fetch(apiUrl("/api/access"), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      // The local token is gone; the server session also expires automatically.
+    }
+  }
+
   return (
     <>
       {view === "access" && <AccessView onAuthenticate={authenticate} />}
       {view === "student" && (
-        <StudentView events={events} onAccess={() => changeView("access")} />
+        <StudentView events={events} onAccess={leaveAccess} />
       )}
       {view === "teacher" && (
         <TeacherView
           events={events}
-          onAccess={() => changeView("access")}
+          onAccess={leaveAccess}
           onAddClick={() => {
             setNotice("");
             setIsFormOpen(true);

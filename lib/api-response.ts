@@ -13,7 +13,7 @@ export function corsHeaders(request: Request) {
   if (origin && allowedOrigins.has(origin)) {
     headers.set("Access-Control-Allow-Origin", origin);
     headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
-    headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    headers.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
   }
 
   return headers;
@@ -26,6 +26,9 @@ export function jsonResponse(
 ) {
   const headers = new Headers(init.headers);
   headers.set("Content-Type", "application/json; charset=utf-8");
+  headers.set("Cache-Control", "no-store");
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Referrer-Policy", "no-referrer");
   corsHeaders(request).forEach((value, key) => headers.set(key, value));
   return new Response(JSON.stringify(body), { ...init, headers });
 }

@@ -39,6 +39,8 @@ Object.defineProperty(globalThis, "document", {
 });
 
 const persistedEvents = [];
+const studentTestCode = "STUDENT-TEST-CODE-ONLY";
+const teacherTestCode = "TEACHER-TEST-CODE-ONLY";
 
 Object.defineProperty(globalThis, "fetch", {
   configurable: true,
@@ -48,7 +50,12 @@ Object.defineProperty(globalThis, "fetch", {
 
     if (url.endsWith("/api/access") && method === "POST") {
       const { code } = JSON.parse(init.body);
-      const role = code.toUpperCase() === "S" ? "student" : code.toUpperCase() === "A" ? "teacher" : null;
+      const role =
+        code.toUpperCase() === studentTestCode
+          ? "student"
+          : code.toUpperCase() === teacherTestCode
+            ? "teacher"
+            : null;
       if (!role) {
         return Response.json(
           { error: "Dieser Zugangscode ist nicht gültig." },
@@ -141,7 +148,7 @@ test("loads and saves calendar events through the shared server API", async () =
   await submitAccess(renderer);
   assert.match(pageText(renderer), /Dieser Zugangscode ist nicht gültig/);
 
-  await change(renderer.root.findByProps({ id: "access-code" }), "s");
+  await change(renderer.root.findByProps({ id: "access-code" }), studentTestCode);
   await submitAccess(renderer);
   assert.match(pageText(renderer), /Aktuelle Epoche/);
   assert.match(pageText(renderer), /Noch keine Epoche eingetragen/);
@@ -150,7 +157,7 @@ test("loads and saves calendar events through the shared server API", async () =
   assert.match(pageText(renderer), /Schüleransicht/);
 
   await click(findButton(renderer.root, "Zugang wechseln", { exact: true }));
-  await change(renderer.root.findByProps({ id: "access-code" }), "A");
+  await change(renderer.root.findByProps({ id: "access-code" }), teacherTestCode);
   await submitAccess(renderer);
   assert.match(pageText(renderer), /Jahresrahmen verwalten/);
   assert.match(pageText(renderer), /Noch keine Termine eingetragen/);
@@ -206,7 +213,7 @@ test("loads and saves calendar events through the shared server API", async () =
   assert.match(pageText(renderer), /10:30 Uhr/);
 
   await click(findButton(renderer.root, "Zugang wechseln", { exact: true }));
-  await change(renderer.root.findByProps({ id: "access-code" }), "S");
+  await change(renderer.root.findByProps({ id: "access-code" }), studentTestCode);
   await submitAccess(renderer);
   assert.match(pageText(renderer), /Als Nächstes/);
   assert.match(pageText(renderer), /Prüftermin/);
@@ -246,7 +253,7 @@ test("loads and saves calendar events through the shared server API", async () =
   assert.match(pageText(freshRenderer), /Klassenbereich öffnen/);
   assert.doesNotMatch(pageText(freshRenderer), /Prüftermin/);
 
-  await change(freshRenderer.root.findByProps({ id: "access-code" }), "S");
+  await change(freshRenderer.root.findByProps({ id: "access-code" }), studentTestCode);
   await submitAccess(freshRenderer);
   assert.match(pageText(freshRenderer), /Prüftermin/);
 

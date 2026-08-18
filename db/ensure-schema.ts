@@ -20,6 +20,19 @@ export function ensureDatabaseSchema() {
           ON access_sessions (expires_at)
         `),
         database.prepare(`
+          CREATE TABLE IF NOT EXISTS access_rate_limits (
+            identifier_hash TEXT PRIMARY KEY NOT NULL,
+            failures INTEGER NOT NULL,
+            window_started_at INTEGER NOT NULL,
+            blocked_until INTEGER,
+            updated_at INTEGER NOT NULL
+          )
+        `),
+        database.prepare(`
+          CREATE INDEX IF NOT EXISTS idx_access_rate_limits_updated_at
+          ON access_rate_limits (updated_at)
+        `),
+        database.prepare(`
           CREATE TABLE IF NOT EXISTS calendar_events (
             id TEXT PRIMARY KEY NOT NULL,
             type TEXT NOT NULL,

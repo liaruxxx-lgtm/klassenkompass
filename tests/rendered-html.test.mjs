@@ -37,8 +37,8 @@ test("server-renders the Klassenkompass access view", async () => {
   assert.match(html, /name="twitter:card" content="summary_large_image"/i);
   assert.match(html, /Klassenkompass/);
   assert.match(html, /Klassenbereich öffnen/);
-  assert.match(html, /auf dem Server geprüft/i);
-  assert.match(html, /noch keine persönlichen Benutzerkonten/i);
+  assert.match(html, /type="password"/i);
+  assert.match(html, /erst nach einer erfolgreichen Prüfung/i);
   assert.doesNotMatch(html, /Schüleransicht öffnen|Lehreransicht öffnen/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
@@ -94,6 +94,7 @@ test("uses a server API and D1 for durable shared calendar events", async () => 
   assert.match(eventRoute, /insert\(calendarEvents\)/);
   assert.match(schema, /calendar_events/);
   assert.match(schema, /access_sessions/);
+  assert.match(schema, /access_rate_limits/);
   assert.match(migration, /CREATE TABLE `calendar_events`/);
   assert.match(migration, /CREATE TABLE `access_sessions`/);
   await assert.rejects(access(new URL("../app/chatgpt-auth.ts", import.meta.url)));

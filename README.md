@@ -36,7 +36,8 @@ Versionen gleich.
 ## Umfang dieses Prototyps
 
 - Zugang, Schüler- und Lehreransicht
-- serverseitig geprüfte Testzugangscodes: `S` für Schüler und `A` für Lehrkräfte
+- getrennte, serverseitig geprüfte Zugangscodes für Schüler und Lehrkräfte
+- Schutz vor automatisiertem Ausprobieren und zeitlich begrenzte Sitzungen
 - dynamisches Formular für Zeiträume und einzelne Termine
 - einfache Pflichtfeld- und Datumsprüfung
 - responsive Darstellung für Handy, Tablet und Desktop
@@ -44,6 +45,7 @@ Versionen gleich.
 
 Termine werden über eine Server-API gespeichert und bei jedem Öffnen der
 Schüler- oder Lehreransicht neu geladen. Sie bleiben daher nach einem Neuladen,
-auf anderen Geräten und in anderen WLANs erhalten. Die einfachen Testcodes sind
-noch keine persönlichen Benutzerkonten und sollten vor dem produktiven Einsatz
-durch starke, nur der Klasse bekannte Codes oder echte Konten ersetzt werden.
+auf anderen Geräten und in anderen WLANs erhalten. Die produktiven Codes liegen
+ausschließlich als geschützte Servereinstellungen vor und werden weder in die
+Browser-App noch in das öffentliche Repository eingebaut. Ohne gültige Sitzung
+liefert die Termin-API keine Daten aus.
