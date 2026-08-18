@@ -34,12 +34,12 @@ export const eighthGradeEpochs = [
   {
     id: "epoch-8-2027-theater",
     type: "period",
-    category: "Epochen",
-    title: "Theater",
+    category: "Achtklass-Stück",
+    title: "Theater – Übungszeit fürs Achtklass-Stück",
     startDate: "2027-01-11",
     endDate: "2027-02-05",
     audience: "Gesamte Klasse",
-    description: "Epochenplan 2026/2027, 8. Klasse.",
+    description: "Theaterphase und Übungszeit für das Achtklass-Stück.",
   },
   {
     id: "epoch-8-2027-geometrie",
@@ -62,3 +62,9 @@ export const eighthGradeEpochs = [
     description: "Epochenplan 2026/2027, 8. Klasse.",
   },
 ] as const satisfies readonly CalendarEvent[];
+
+export const retiredTestEventIds = [
+  "722e8f6a-e0b9-4cb3-aec7-abe707febe47",
+  "f3f9f9ee-fc11-4909-9e30-53e9cfaf86e8",
+  "6c859778-2c8e-43e7-aa95-582546f295d1",
+] as const;

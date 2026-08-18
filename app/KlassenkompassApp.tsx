@@ -361,6 +361,9 @@ function CurrentPeriodCard({
   event?: CalendarEvent;
   onSelect: (event: CalendarEvent) => void;
 }) {
+  const label =
+    event?.category === "Achtklass-Stück" ? "Aktuelle Übungszeit" : "Aktuelle Epoche";
+
   return (
     <article
       className={`feature-card current-card ${event ? "event-is-openable" : ""}`}
@@ -368,7 +371,7 @@ function CurrentPeriodCard({
       <div className="feature-card-topline">
         <span className="feature-label">
           <BookOpen size={16} aria-hidden="true" />
-          Aktuelle Epoche
+          {label}
         </span>
         <span className="status-chip">Heute</span>
       </div>

@@ -42,7 +42,8 @@ Versionen gleich.
 - einfache Pflichtfeld- und Datumsprüfung
 - responsive Darstellung für Handy, Tablet und Desktop
 - gemeinsame, dauerhafte Speicherung in einer Server-Datenbank
-- sechs bestätigte Epochen der 8. Klasse aus dem Epochenplan 2026/2027
+- fünf bestätigte Epochen sowie die Theater-Übungszeit fürs Achtklass-Stück
+  aus dem Epochenplan 2026/2027
 
 Termine werden über eine Server-API gespeichert und bei jedem Öffnen der
 Schüler- oder Lehreransicht neu geladen. Sie bleiben daher nach einem Neuladen,

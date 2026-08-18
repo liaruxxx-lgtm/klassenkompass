@@ -1,5 +1,8 @@
 import { env } from "cloudflare:workers";
-import { eighthGradeEpochs } from "../lib/eighth-grade-epochs";
+import {
+  eighthGradeEpochs,
+  retiredTestEventIds,
+} from "../lib/eighth-grade-epochs";
 
 let initialization: Promise<unknown> | undefined;
 
@@ -19,6 +22,14 @@ export function ensureDatabaseSchema() {
             audience,
             description
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            type = excluded.type,
+            category = excluded.category,
+            title = excluded.title,
+            start_date = excluded.start_date,
+            end_date = excluded.end_date,
+            audience = excluded.audience,
+            description = excluded.description
         `)
         .bind(
           event.id,
@@ -77,6 +88,12 @@ export function ensureDatabaseSchema() {
           CREATE INDEX IF NOT EXISTS idx_calendar_events_start_date
           ON calendar_events (start_date)
         `),
+        database
+          .prepare(`
+            DELETE FROM calendar_events
+            WHERE id IN (?, ?, ?)
+          `)
+          .bind(...retiredTestEventIds),
         ...epochSeedStatements,
       ])
       .catch((error) => {
