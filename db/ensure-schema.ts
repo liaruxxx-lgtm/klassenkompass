@@ -1,10 +1,36 @@
 import { env } from "cloudflare:workers";
+import { eighthGradeEpochs } from "../lib/eighth-grade-epochs";
 
 let initialization: Promise<unknown> | undefined;
 
 export function ensureDatabaseSchema() {
   if (!initialization) {
     const database = env.DB;
+    const epochSeedStatements = eighthGradeEpochs.map((event) =>
+      database
+        .prepare(`
+          INSERT OR IGNORE INTO calendar_events (
+            id,
+            type,
+            category,
+            title,
+            start_date,
+            end_date,
+            audience,
+            description
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+        .bind(
+          event.id,
+          event.type,
+          event.category,
+          event.title,
+          event.startDate,
+          event.endDate,
+          event.audience,
+          event.description,
+        ),
+    );
     initialization = database
       .batch([
         database.prepare(`
@@ -51,6 +77,7 @@ export function ensureDatabaseSchema() {
           CREATE INDEX IF NOT EXISTS idx_calendar_events_start_date
           ON calendar_events (start_date)
         `),
+        ...epochSeedStatements,
       ])
       .catch((error) => {
         initialization = undefined;

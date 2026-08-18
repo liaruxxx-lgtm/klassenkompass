@@ -20,9 +20,10 @@ Datenbank. Der Mac darf ausgeschaltet sein; weder Website noch Speicherung
 hängen vom Heim-WLAN oder einem laufenden lokalen Prozess ab.
 
 Das Repository ist öffentlich, weil diese GitHub-Pages-Veröffentlichung den
-kostenlosen öffentlichen Weg nutzt. Im Projekt befinden sich keine echten
-Termine oder Zugangsdaten. Die produktiven Testcodes werden als geschützte
-Servereinstellungen verwaltet und nicht in die Browser-App eingebaut.
+kostenlosen öffentlichen Weg nutzt. Im Projekt befinden sich nur die sechs aus
+dem Epochenplan 2026/2027 übernommenen Epochen der 8. Klasse, aber keine
+Zugangsdaten oder personenbezogenen Termine. Die produktiven Testcodes werden
+als geschützte Servereinstellungen verwaltet und nicht in die Browser-App eingebaut.
 
 Die frühere OpenAI-Sites-Adresse
 <https://klassenkompass-acht.bestefamilie.chatgpt.site> bleibt eine alte private
