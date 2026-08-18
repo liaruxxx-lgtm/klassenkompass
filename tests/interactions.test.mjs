@@ -194,6 +194,19 @@ test("loads, creates, edits, and deletes events through the shared server API", 
   assert.match(pageText(renderer), /Chronologische Übersicht/);
   assert.match(pageText(renderer), /Schüleransicht/);
 
+  await click(renderer.root.findByProps({ "aria-label": "Kalenderansicht öffnen" }));
+  assert.equal(renderer.root.findAllByProps({ role: "dialog" }).length, 1);
+  assert.match(pageText(renderer), /Kalender/);
+  assert.match(pageText(renderer), /Für diesen Tag sind keine Termine eingetragen/);
+  assert.equal(renderer.root.findAllByProps({ role: "gridcell" }).length, 42);
+  const initialMonth = textOf(renderer.root.findByProps({ id: "calendar-title" }));
+  await click(renderer.root.findByProps({ "aria-label": "Nächster Monat" }));
+  assert.notEqual(textOf(renderer.root.findByProps({ id: "calendar-title" })), initialMonth);
+  await click(findButton(renderer.root, "Heute", { exact: true }));
+  assert.equal(textOf(renderer.root.findByProps({ id: "calendar-title" })), initialMonth);
+  await click(renderer.root.findByProps({ "aria-label": "Kalenderansicht schließen" }));
+  assert.equal(renderer.root.findAllByProps({ role: "dialog" }).length, 0);
+
   await click(findButton(renderer.root, "Zugang wechseln", { exact: true }));
   await change(renderer.root.findByProps({ id: "access-code" }), teacherTestCode);
   await submitAccess(renderer);

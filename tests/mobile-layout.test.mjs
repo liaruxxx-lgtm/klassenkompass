@@ -39,6 +39,10 @@ test("provides a dedicated portrait-phone navigation and safe viewport", async (
   assert.match(css, /env\(safe-area-inset-bottom\)/);
   assert.match(css, /touch-action:\s*manipulation/);
   assert.match(css, /overflow-x:\s*clip/);
+  assert.match(app, /aria-label="Kalenderansicht öffnen"/);
+  assert.match(app, /role="grid"/);
+  assert.match(css, /\.calendar-modal\s*\{[\s\S]*height:\s*100dvh/);
+  assert.match(css, /\.calendar-grid\s*\{[\s\S]*grid-template-rows:\s*repeat\(6, 56px\)/);
 });
 
 test("keeps teacher creation and the event form thumb-friendly on phones", async () => {

@@ -9,6 +9,8 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CircleDot,
   Clock3,
   Compass,
@@ -108,6 +110,10 @@ function formatEventDate(event: CalendarEvent) {
 
 function compareEvents(a: CalendarEvent, b: CalendarEvent) {
   return a.startDate.localeCompare(b.startDate) || a.title.localeCompare(b.title);
+}
+
+function eventOccursOnDate(event: CalendarEvent, value: string) {
+  return event.startDate <= value && (event.endDate ?? event.startDate) >= value;
 }
 
 function Brand({ compact = false }: { compact?: boolean }) {
@@ -601,9 +607,11 @@ function EventRow({
 function Timeline({
   events,
   onSelect,
+  onOpenCalendar,
 }: {
   events: CalendarEvent[];
   onSelect: (event: CalendarEvent) => void;
+  onOpenCalendar: () => void;
 }) {
   return (
     <section className="timeline-card" aria-labelledby="timeline-title">
@@ -612,7 +620,14 @@ function Timeline({
           <p className="overline">Im Jahreslauf</p>
           <h2 id="timeline-title">Chronologische Übersicht</h2>
         </div>
-        <CalendarDays size={22} aria-hidden="true" />
+        <button
+          className="timeline-calendar-button"
+          type="button"
+          onClick={onOpenCalendar}
+          aria-label="Kalenderansicht öffnen"
+        >
+          <CalendarDays size={22} aria-hidden="true" />
+        </button>
       </div>
 
       {events.length === 0 ? (
@@ -644,6 +659,258 @@ function Timeline({
         </div>
       )}
     </section>
+  );
+}
+
+const calendarWeekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"] as const;
+
+function CalendarOverview({
+  events,
+  onClose,
+  onSelectEvent,
+}: {
+  events: CalendarEvent[];
+  onClose: () => void;
+  onSelectEvent: (event: CalendarEvent) => void;
+}) {
+  const today = useMemo(() => new Date(), []);
+  const todayKey = dateKey(today);
+  const [monthStart, setMonthStart] = useState(
+    () => new Date(today.getFullYear(), today.getMonth(), 1),
+  );
+  const [selectedDate, setSelectedDate] = useState(today);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  const calendarDays = useMemo(() => {
+    const mondayOffset = (monthStart.getDay() + 6) % 7;
+    const gridStart = new Date(
+      monthStart.getFullYear(),
+      monthStart.getMonth(),
+      1 - mondayOffset,
+    );
+    return Array.from(
+      { length: 42 },
+      (_, index) =>
+        new Date(
+          gridStart.getFullYear(),
+          gridStart.getMonth(),
+          gridStart.getDate() + index,
+        ),
+    );
+  }, [monthStart]);
+
+  const eventsByDay = useMemo(() => {
+    const result = new Map<string, CalendarEvent[]>();
+    for (const day of calendarDays) {
+      const key = dateKey(day);
+      result.set(
+        key,
+        events.filter((event) => eventOccursOnDate(event, key)).sort(compareEvents),
+      );
+    }
+    return result;
+  }, [calendarDays, events]);
+
+  const selectedDateKey = dateKey(selectedDate);
+  const selectedEvents = eventsByDay.get(selectedDateKey) ??
+    events.filter((event) => eventOccursOnDate(event, selectedDateKey)).sort(compareEvents);
+  const monthLabel = new Intl.DateTimeFormat("de-DE", {
+    month: "long",
+    year: "numeric",
+  }).format(monthStart);
+  const selectedDateLabel = new Intl.DateTimeFormat("de-DE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(selectedDate);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  function moveMonth(offset: number) {
+    const nextMonth = new Date(
+      monthStart.getFullYear(),
+      monthStart.getMonth() + offset,
+      1,
+    );
+    const lastDay = new Date(
+      nextMonth.getFullYear(),
+      nextMonth.getMonth() + 1,
+      0,
+    ).getDate();
+    setMonthStart(nextMonth);
+    setSelectedDate(
+      new Date(
+        nextMonth.getFullYear(),
+        nextMonth.getMonth(),
+        Math.min(selectedDate.getDate(), lastDay),
+      ),
+    );
+  }
+
+  function selectDay(day: Date) {
+    setSelectedDate(day);
+    if (
+      day.getMonth() !== monthStart.getMonth() ||
+      day.getFullYear() !== monthStart.getFullYear()
+    ) {
+      setMonthStart(new Date(day.getFullYear(), day.getMonth(), 1));
+    }
+  }
+
+  function showToday() {
+    setMonthStart(new Date(today.getFullYear(), today.getMonth(), 1));
+    setSelectedDate(today);
+  }
+
+  return (
+    <div className="modal-backdrop calendar-backdrop">
+      <section
+        className="calendar-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="calendar-title"
+      >
+        <header className="calendar-toolbar">
+          <button className="calendar-today-button" type="button" onClick={showToday}>
+            Heute
+          </button>
+          <div className="calendar-title-block">
+            <p className="overline">Kalender</p>
+            <h2 id="calendar-title">{monthLabel}</h2>
+          </div>
+          <div className="calendar-toolbar-actions">
+            <div className="calendar-month-navigation" role="group" aria-label="Monat wechseln">
+              <button type="button" onClick={() => moveMonth(-1)} aria-label="Vorheriger Monat">
+                <ChevronLeft size={21} aria-hidden="true" />
+              </button>
+              <button type="button" onClick={() => moveMonth(1)} aria-label="Nächster Monat">
+                <ChevronRight size={21} aria-hidden="true" />
+              </button>
+            </div>
+            <button
+              ref={closeButtonRef}
+              className="calendar-close-button"
+              type="button"
+              onClick={onClose}
+              aria-label="Kalenderansicht schließen"
+            >
+              <X size={21} aria-hidden="true" />
+            </button>
+          </div>
+        </header>
+
+        <div className="calendar-layout">
+          <section className="calendar-month-panel" aria-label={monthLabel}>
+            <div className="calendar-weekdays" aria-hidden="true">
+              {calendarWeekdays.map((weekday) => (
+                <span key={weekday}>{weekday}</span>
+              ))}
+            </div>
+            <div className="calendar-grid" role="grid" aria-labelledby="calendar-title">
+              {calendarDays.map((day) => {
+                const key = dateKey(day);
+                const dayEvents = eventsByDay.get(key) ?? [];
+                const isCurrentMonth = day.getMonth() === monthStart.getMonth();
+                const isToday = key === todayKey;
+                const isSelected = key === selectedDateKey;
+                const dateLabel = new Intl.DateTimeFormat("de-DE", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                }).format(day);
+
+                return (
+                  <button
+                    key={key}
+                    className={`calendar-day ${isCurrentMonth ? "in-month" : "outside-month"} ${isToday ? "is-today" : ""} ${isSelected ? "is-selected" : ""}`}
+                    type="button"
+                    role="gridcell"
+                    onClick={() => selectDay(day)}
+                    aria-label={`${dateLabel}${dayEvents.length > 0 ? `, ${dayEvents.length} ${dayEvents.length === 1 ? "Termin" : "Termine"}` : ", keine Termine"}`}
+                    aria-selected={isSelected}
+                  >
+                    <span className="calendar-day-number">{day.getDate()}</span>
+                    <span className="calendar-day-events" aria-hidden="true">
+                      {dayEvents.slice(0, 2).map((event) => (
+                        <span
+                          className={`calendar-event-pill category-${categoryClass[event.category]}`}
+                          key={event.id}
+                        >
+                          {event.time ? `${event.time} ` : ""}
+                          {event.title}
+                        </span>
+                      ))}
+                      {dayEvents.length > 2 && (
+                        <span className="calendar-more-events">+{dayEvents.length - 2} weitere</span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <aside className="calendar-day-panel" aria-live="polite">
+            <div className="calendar-day-heading">
+              <span className={selectedDateKey === todayKey ? "is-today" : ""}>
+                {selectedDate.getDate()}
+              </span>
+              <div>
+                <p className="overline">
+                  {selectedDateKey === todayKey ? "Heute" : "Ausgewählter Tag"}
+                </p>
+                <h3>{selectedDateLabel}</h3>
+              </div>
+            </div>
+
+            {selectedEvents.length === 0 ? (
+              <div className="calendar-day-empty">
+                <CalendarDays size={25} aria-hidden="true" />
+                <p>Für diesen Tag sind keine Termine eingetragen.</p>
+              </div>
+            ) : (
+              <div className="calendar-agenda">
+                {selectedEvents.map((event) => (
+                  <button
+                    className="calendar-agenda-event"
+                    type="button"
+                    key={event.id}
+                    onClick={() => onSelectEvent(event)}
+                    aria-label={`Details zu „${event.title}“ öffnen`}
+                  >
+                    <span
+                      className={`calendar-agenda-marker category-${categoryClass[event.category]}`}
+                      aria-hidden="true"
+                    />
+                    <span>
+                      <strong>{event.title}</strong>
+                      <small>
+                        {event.time ? `${event.time} Uhr · ` : ""}
+                        {event.category}
+                      </small>
+                    </span>
+                    <ChevronRight size={17} aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </aside>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -825,6 +1092,7 @@ function StudentView({
 }) {
   const [activeSection, setActiveSection] = useState<StudentSection>("ueberblick");
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent>();
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const today = dateKey(new Date());
   const sortedEvents = useMemo(() => [...events].sort(compareEvents), [events]);
   const currentPeriod = sortedEvents.find(
@@ -897,12 +1165,26 @@ function StudentView({
         <UpcomingEvents events={upcomingEvents} onSelect={setSelectedEvent} />
 
         <div className="lower-dashboard-grid" id="jahresblick">
-          <Timeline events={sortedEvents} onSelect={setSelectedEvent} />
+          <Timeline
+            events={sortedEvents}
+            onSelect={setSelectedEvent}
+            onOpenCalendar={() => setIsCalendarOpen(true)}
+          />
           <CategoryOverview events={events} />
         </div>
       </main>
       <PrototypeFooter />
       <MobileStudentNav activeSection={activeSection} onNavigate={navigateTo} />
+      {isCalendarOpen && (
+        <CalendarOverview
+          events={sortedEvents}
+          onClose={() => setIsCalendarOpen(false)}
+          onSelectEvent={(event) => {
+            setIsCalendarOpen(false);
+            setSelectedEvent(event);
+          }}
+        />
+      )}
       {selectedEvent && (
         <EventDetails event={selectedEvent} onClose={() => setSelectedEvent(undefined)} />
       )}
