@@ -14,6 +14,9 @@ Object.defineProperty(globalThis, "window", {
     addEventListener() {},
     removeEventListener() {},
     scrollTo() {},
+    confirm() {
+      return true;
+    },
   },
 });
 
@@ -78,6 +81,26 @@ Object.defineProperty(globalThis, "fetch", {
       return Response.json({ event }, { status: 201 });
     }
 
+    if (url.endsWith("/api/events") && method === "PUT") {
+      const event = JSON.parse(init.body);
+      const index = persistedEvents.findIndex((entry) => entry.id === event.id);
+      if (index < 0) {
+        return Response.json({ error: "Der Termin wurde nicht gefunden." }, { status: 404 });
+      }
+      persistedEvents[index] = event;
+      return Response.json({ event });
+    }
+
+    if (url.endsWith("/api/events") && method === "DELETE") {
+      const { id } = JSON.parse(init.body);
+      const index = persistedEvents.findIndex((entry) => entry.id === id);
+      if (index < 0) {
+        return Response.json({ error: "Der Termin wurde nicht gefunden." }, { status: 404 });
+      }
+      persistedEvents.splice(index, 1);
+      return Response.json({ id });
+    }
+
     return Response.json({ error: "Nicht gefunden" }, { status: 404 });
   },
 });
@@ -103,7 +126,7 @@ function findButton(root, label, { exact = false } = {}) {
 
 async function click(button) {
   await act(async () => {
-    button.props.onClick();
+    await button.props.onClick();
   });
 }
 
@@ -129,7 +152,7 @@ async function submitAccess(renderer) {
   });
 }
 
-test("loads and saves calendar events through the shared server API", async () => {
+test("loads, creates, edits, and deletes events through the shared server API", async () => {
   persistedEvents.length = 0;
   let renderer;
   await act(async () => {
@@ -139,6 +162,21 @@ test("loads and saves calendar events through the shared server API", async () =
   assert.match(pageText(renderer), /Klassenbereich öffnen/);
   assert.doesNotMatch(pageText(renderer), /Aktuelle Epoche/);
   assert.equal(renderer.root.findAllByProps({ className: "role-switch" }).length, 0);
+
+  const accessCodeInput = renderer.root.findByProps({ id: "access-code" });
+  assert.equal(accessCodeInput.props.type, "password");
+  const showAccessCodeButton = renderer.root.findByProps({
+    "aria-label": "Zugangscode anzeigen",
+  });
+  assert.equal(showAccessCodeButton.props["aria-pressed"], false);
+  await click(showAccessCodeButton);
+  assert.equal(renderer.root.findByProps({ id: "access-code" }).props.type, "text");
+  const hideAccessCodeButton = renderer.root.findByProps({
+    "aria-label": "Zugangscode verbergen",
+  });
+  assert.equal(hideAccessCodeButton.props["aria-pressed"], true);
+  await click(hideAccessCodeButton);
+  assert.equal(renderer.root.findByProps({ id: "access-code" }).props.type, "password");
 
   await submitAccess(renderer);
   assert.match(pageText(renderer), /Bitte einen Zugangscode eingeben/);
@@ -212,11 +250,26 @@ test("loads and saves calendar events through the shared server API", async () =
   assert.match(pageText(renderer), /gespeichert/i);
   assert.match(pageText(renderer), /10:30 Uhr/);
 
+  await click(findButton(renderer.root, "Bearbeiten", { exact: true }));
+  assert.match(pageText(renderer), /Termin bearbeiten/);
+  assert.equal(renderer.root.findByProps({ id: "event-title" }).props.value, "Prüftermin");
+  assert.equal(renderer.root.findByProps({ id: "event-location" }).props.value, "Großer Saal");
+  await change(renderer.root.findByProps({ id: "event-title" }), "Bearbeiteter Prüftermin");
+  await change(renderer.root.findByProps({ id: "event-location" }), "Kleiner Saal");
+  await submit(renderer);
+
+  assert.equal(renderer.root.findAllByProps({ role: "dialog" }).length, 0);
+  assert.match(pageText(renderer), /Bearbeiteter Prüftermin/);
+  assert.match(pageText(renderer), /wurde aktualisiert/);
+  assert.equal(persistedEvents.length, 1);
+  assert.equal(persistedEvents[0].id, "server-event-1");
+  assert.equal(persistedEvents[0].location, "Kleiner Saal");
+
   await click(findButton(renderer.root, "Zugang wechseln", { exact: true }));
   await change(renderer.root.findByProps({ id: "access-code" }), studentTestCode);
   await submitAccess(renderer);
   assert.match(pageText(renderer), /Als Nächstes/);
-  assert.match(pageText(renderer), /Prüftermin/);
+  assert.match(pageText(renderer), /Bearbeiteter Prüftermin/);
   assert.match(pageText(renderer), /Chronologische Übersicht/);
 
   const mobileNav = renderer.root.findByProps({ className: "mobile-tabbar" });
@@ -229,7 +282,7 @@ test("loads and saves calendar events through the shared server API", async () =
   assert.equal(mobileNavButtons[0].props["aria-current"], undefined);
 
   const detailTargets = renderer.root.findAllByProps({
-    "aria-label": "Details zu „Prüftermin“ öffnen",
+    "aria-label": "Details zu „Bearbeiteter Prüftermin“ öffnen",
   });
   assert.ok(detailTargets.length >= 2);
   await click(detailTargets[0]);
@@ -237,7 +290,7 @@ test("loads and saves calendar events through the shared server API", async () =
   assert.match(pageText(renderer), /Termindetails/);
   assert.match(pageText(renderer), /15. Januar 2099/);
   assert.match(pageText(renderer), /10:30 Uhr/);
-  assert.match(pageText(renderer), /Großer Saal/);
+  assert.match(pageText(renderer), /Kleiner Saal/);
   assert.match(pageText(renderer), /Bitte zehn Minuten früher da sein/);
   await click(renderer.root.findByProps({ "aria-label": "Detailansicht schließen" }));
   assert.equal(renderer.root.findAllByProps({ role: "dialog" }).length, 0);
@@ -251,11 +304,25 @@ test("loads and saves calendar events through the shared server API", async () =
     freshRenderer = create(React.createElement(KlassenkompassApp));
   });
   assert.match(pageText(freshRenderer), /Klassenbereich öffnen/);
-  assert.doesNotMatch(pageText(freshRenderer), /Prüftermin/);
+  assert.doesNotMatch(pageText(freshRenderer), /Bearbeiteter Prüftermin/);
 
   await change(freshRenderer.root.findByProps({ id: "access-code" }), studentTestCode);
   await submitAccess(freshRenderer);
-  assert.match(pageText(freshRenderer), /Prüftermin/);
+  assert.match(pageText(freshRenderer), /Bearbeiteter Prüftermin/);
+
+  await click(findButton(freshRenderer.root, "Zugang wechseln", { exact: true }));
+  await change(freshRenderer.root.findByProps({ id: "access-code" }), teacherTestCode);
+  await submitAccess(freshRenderer);
+  await click(findButton(freshRenderer.root, "Löschen", { exact: true }));
+  assert.equal(persistedEvents.length, 0);
+  assert.equal(
+    freshRenderer.root.findAllByProps({
+      "aria-label": "„Bearbeiteter Prüftermin“ bearbeiten",
+    }).length,
+    0,
+  );
+  assert.match(pageText(freshRenderer), /0 Termine/);
+  assert.match(pageText(freshRenderer), /wurde gelöscht/);
 
   await act(async () => {
     freshRenderer.unmount();

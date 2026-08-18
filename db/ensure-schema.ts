@@ -5,6 +5,7 @@ import {
 } from "../lib/eighth-grade-epochs";
 
 let initialization: Promise<unknown> | undefined;
+const eighthGradeSeedKey = "class-8-periods-2026-27-v1";
 
 export function ensureDatabaseSchema() {
   if (!initialization) {
@@ -12,7 +13,7 @@ export function ensureDatabaseSchema() {
     const epochSeedStatements = eighthGradeEpochs.map((event) =>
       database
         .prepare(`
-          INSERT OR IGNORE INTO calendar_events (
+          INSERT INTO calendar_events (
             id,
             type,
             category,
@@ -21,7 +22,13 @@ export function ensureDatabaseSchema() {
             end_date,
             audience,
             description
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          )
+          SELECT ?, ?, ?, ?, ?, ?, ?, ?
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM calendar_event_seed_runs
+            WHERE seed_key = ?
+          )
           ON CONFLICT(id) DO UPDATE SET
             type = excluded.type,
             category = excluded.category,
@@ -40,6 +47,7 @@ export function ensureDatabaseSchema() {
           event.endDate,
           event.audience,
           event.description,
+          eighthGradeSeedKey,
         ),
     );
     initialization = database
@@ -88,6 +96,12 @@ export function ensureDatabaseSchema() {
           CREATE INDEX IF NOT EXISTS idx_calendar_events_start_date
           ON calendar_events (start_date)
         `),
+        database.prepare(`
+          CREATE TABLE IF NOT EXISTS calendar_event_seed_runs (
+            seed_key TEXT PRIMARY KEY NOT NULL,
+            seeded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )
+        `),
         database
           .prepare(`
             DELETE FROM calendar_events
@@ -95,6 +109,12 @@ export function ensureDatabaseSchema() {
           `)
           .bind(...retiredTestEventIds),
         ...epochSeedStatements,
+        database
+          .prepare(`
+            INSERT OR IGNORE INTO calendar_event_seed_runs (seed_key)
+            VALUES (?)
+          `)
+          .bind(eighthGradeSeedKey),
       ])
       .catch((error) => {
         initialization = undefined;

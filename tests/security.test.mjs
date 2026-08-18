@@ -19,6 +19,10 @@ test("keeps calendar data behind server authorization", async () => {
   assert.ok(authorizationCheck >= 0 && authorizationCheck < databaseRead);
   assert.match(eventsRoute, /if \(!role\)[\s\S]*status: 401/);
   assert.match(eventsRoute, /role !== "teacher"/);
+  assert.match(eventsRoute, /export async function PUT/);
+  assert.match(eventsRoute, /\.update\(calendarEvents\)/);
+  assert.match(eventsRoute, /export async function DELETE/);
+  assert.match(eventsRoute, /\.delete\(calendarEvents\)/);
   assert.match(accessRoute, /AccessRateLimitError/);
   assert.match(accessRoute, /status: 429/);
   assert.match(auth, /failedAttemptLimit = 5/);
@@ -26,8 +30,9 @@ test("keeps calendar data behind server authorization", async () => {
   assert.match(auth, /AUTH_RATE_LIMIT_SECRET/);
   assert.match(auth, /revokeAccessSession/);
   assert.match(response, /Cache-Control", "no-store"/);
+  assert.match(response, /GET, POST, PUT, DELETE, OPTIONS/);
   assert.match(app, /useState<CalendarEvent\[]>\(\[\]\)/);
-  assert.match(app, /type="password"/);
+  assert.match(app, /type=\{isAccessCodeVisible \? "text" : "password"\}/);
   assert.match(app, /maxLength=\{128\}/);
   assert.match(app, /method: "DELETE"/);
   assert.doesNotMatch(envExample, /^(?:STUDENT|ADMIN)_ACCESS_CODE=[SA]$/m);

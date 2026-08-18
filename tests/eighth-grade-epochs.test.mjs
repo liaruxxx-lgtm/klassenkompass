@@ -67,13 +67,19 @@ test("retires only the three identified test calendar entries", () => {
   assert.equal(new Set(retiredTestEventIds).size, 3);
 });
 
-test("upserts official entries and deletes test data by exact ids", async () => {
+test("seeds official entries once and deletes test data by exact ids", async () => {
   const source = await readFile(
     new URL("../db/ensure-schema.ts", import.meta.url),
     "utf8",
   );
 
   assert.match(source, /ON CONFLICT\(id\) DO UPDATE SET/);
+  assert.match(source, /CREATE TABLE IF NOT EXISTS calendar_event_seed_runs/);
+  assert.match(
+    source,
+    /WHERE NOT EXISTS \(\s+SELECT 1\s+FROM calendar_event_seed_runs\s+WHERE seed_key = \?/,
+  );
+  assert.match(source, /INSERT OR IGNORE INTO calendar_event_seed_runs \(seed_key\)/);
   assert.match(source, /DELETE FROM calendar_events\s+WHERE id IN \(\?, \?, \?\)/);
   assert.doesNotMatch(source, /DELETE FROM calendar_events\s+WHERE title/i);
 });

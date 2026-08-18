@@ -12,15 +12,19 @@ import {
   CircleDot,
   Clock3,
   Compass,
+  Eye,
+  EyeOff,
   Flag,
   Leaf,
   ListFilter,
   LockKeyhole,
   MapPin,
+  Pencil,
   Plus,
   Presentation,
   ShieldAlert,
   Sparkles,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -134,6 +138,7 @@ function AccessView({
   const [accessCode, setAccessCode] = useState("");
   const [accessError, setAccessError] = useState("");
   const [isChecking, setIsChecking] = useState(false);
+  const [isAccessCodeVisible, setIsAccessCodeVisible] = useState(false);
   const accessCodeRef = useRef<HTMLInputElement>(null);
 
   async function handleAccessSubmit(event: FormEvent<HTMLFormElement>) {
@@ -220,7 +225,7 @@ function AccessView({
                 ref={accessCodeRef}
                 id="access-code"
                 className={`text-input code-input ${accessError ? "input-error" : ""}`}
-                type="password"
+                type={isAccessCodeVisible ? "text" : "password"}
                 inputMode="text"
                 enterKeyHint="go"
                 autoCapitalize="characters"
@@ -236,6 +241,28 @@ function AccessView({
                 aria-invalid={Boolean(accessError)}
                 aria-describedby={accessError ? "code-hint code-error" : "code-hint"}
               />
+              <button
+                className="code-visibility-toggle"
+                type="button"
+                onClick={() => setIsAccessCodeVisible((isVisible) => !isVisible)}
+                aria-label={
+                  isAccessCodeVisible
+                    ? "Zugangscode verbergen"
+                    : "Zugangscode anzeigen"
+                }
+                aria-pressed={isAccessCodeVisible}
+                title={
+                  isAccessCodeVisible
+                    ? "Zugangscode verbergen"
+                    : "Zugangscode anzeigen"
+                }
+              >
+                {isAccessCodeVisible ? (
+                  <EyeOff size={18} aria-hidden="true" />
+                ) : (
+                  <Eye size={18} aria-hidden="true" />
+                )}
+              </button>
               <span className="code-field-status">Serverprüfung</span>
             </div>
             <p className="field-hint" id="code-hint">
@@ -487,10 +514,16 @@ function EventRow({
   event,
   compact = false,
   onSelect,
+  onEdit,
+  onDelete,
+  isDeleting = false,
 }: {
   event: CalendarEvent;
   compact?: boolean;
   onSelect?: (event: CalendarEvent) => void;
+  onEdit?: (event: CalendarEvent) => void;
+  onDelete?: (event: CalendarEvent) => void;
+  isDeleting?: boolean;
 }) {
   const date = parseLocalDate(event.startDate);
   const day = new Intl.DateTimeFormat("de-DE", { day: "2-digit" }).format(date);
@@ -526,11 +559,39 @@ function EventRow({
           </span>
         </p>
       </div>
-      {!compact && (
+      {!compact && !onEdit && !onDelete && (
         <span className="temporary-label">
           <Check size={13} aria-hidden="true" />
           gespeichert
         </span>
+      )}
+      {onEdit && onDelete && (
+        <div
+          className="event-actions"
+          role="group"
+          aria-label={`Aktionen für „${event.title}“`}
+        >
+          <button
+            className="event-action-button"
+            type="button"
+            onClick={() => onEdit(event)}
+            disabled={isDeleting}
+            aria-label={`„${event.title}“ bearbeiten`}
+          >
+            <Pencil size={15} aria-hidden="true" />
+            <span>Bearbeiten</span>
+          </button>
+          <button
+            className="event-action-button event-action-delete"
+            type="button"
+            onClick={() => onDelete(event)}
+            disabled={isDeleting}
+            aria-label={`„${event.title}“ löschen`}
+          >
+            <Trash2 size={15} aria-hidden="true" />
+            <span>{isDeleting ? "Wird gelöscht …" : "Löschen"}</span>
+          </button>
+        </div>
       )}
       {onSelect && <EventOpenTarget event={event} onSelect={onSelect} />}
     </article>
@@ -853,14 +914,20 @@ function TeacherView({
   events,
   onAccess,
   onAddClick,
+  onEdit,
+  onDelete,
   notice,
 }: {
   events: CalendarEvent[];
   onAccess: () => void;
   onAddClick: () => void;
+  onEdit: (event: CalendarEvent) => void;
+  onDelete: (event: CalendarEvent) => Promise<void>;
   notice: string;
 }) {
   const [filter, setFilter] = useState<"Alle" | Category>("Alle");
+  const [deletingId, setDeletingId] = useState("");
+  const [actionError, setActionError] = useState("");
   const visibleEvents = useMemo(
     () =>
       [...events]
@@ -868,6 +935,24 @@ function TeacherView({
         .sort(compareEvents),
     [events, filter],
   );
+
+  async function handleDelete(event: CalendarEvent) {
+    if (!window.confirm(`„${event.title}“ wirklich löschen?`)) return;
+
+    setDeletingId(event.id);
+    setActionError("");
+    try {
+      await onDelete(event);
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Der Termin konnte nicht gelöscht werden.",
+      );
+    } finally {
+      setDeletingId("");
+    }
+  }
 
   return (
     <div className="app-page teacher-page">
@@ -903,6 +988,13 @@ function TeacherView({
           <div className="success-notice" role="status">
             <Check size={17} aria-hidden="true" />
             {notice}
+          </div>
+        )}
+
+        {actionError && (
+          <div className="action-error-notice" role="alert">
+            <ShieldAlert size={17} aria-hidden="true" />
+            {actionError}
           </div>
         )}
 
@@ -960,7 +1052,13 @@ function TeacherView({
           ) : (
             <div className="admin-event-list">
               {visibleEvents.map((event) => (
-                <EventRow key={event.id} event={event} />
+                <EventRow
+                  key={event.id}
+                  event={event}
+                  onEdit={onEdit}
+                  onDelete={handleDelete}
+                  isDeleting={deletingId === event.id}
+                />
               ))}
             </div>
           )}
@@ -983,21 +1081,26 @@ function EventTypeIcon({ type }: { type: EventType }) {
 }
 
 function EventForm({
+  initialEvent,
   onClose,
   onSave,
 }: {
+  initialEvent?: CalendarEvent;
   onClose: () => void;
   onSave: (event: NewCalendarEvent) => Promise<void>;
 }) {
-  const [type, setType] = useState<EventType>("period");
-  const [category, setCategory] = useState<Category>("Epochen");
-  const [title, setTitle] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [time, setTime] = useState("");
-  const [audience, setAudience] = useState<Audience>("Gesamte Klasse");
-  const [location, setLocation] = useState("");
-  const [description, setDescription] = useState("");
+  const isEditing = Boolean(initialEvent);
+  const [type, setType] = useState<EventType>(initialEvent?.type ?? "period");
+  const [category, setCategory] = useState<Category>(initialEvent?.category ?? "Epochen");
+  const [title, setTitle] = useState(initialEvent?.title ?? "");
+  const [startDate, setStartDate] = useState(initialEvent?.startDate ?? "");
+  const [endDate, setEndDate] = useState(initialEvent?.endDate ?? "");
+  const [time, setTime] = useState(initialEvent?.time ?? "");
+  const [audience, setAudience] = useState<Audience>(
+    initialEvent?.audience ?? "Gesamte Klasse",
+  );
+  const [location, setLocation] = useState(initialEvent?.location ?? "");
+  const [description, setDescription] = useState(initialEvent?.description ?? "");
   const [errors, setErrors] = useState<FormErrors>({});
   const [saveError, setSaveError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -1089,8 +1192,8 @@ function EventForm({
       >
         <header className="modal-header">
           <div>
-            <p className="overline">Neuer Eintrag</p>
-            <h2 id="form-title">Termin hinzufügen</h2>
+            <p className="overline">{isEditing ? "Eintrag bearbeiten" : "Neuer Eintrag"}</p>
+            <h2 id="form-title">{isEditing ? "Termin bearbeiten" : "Termin hinzufügen"}</h2>
             <p>Pflichtfelder sind mit <span className="required">*</span> markiert.</p>
           </div>
           <button className="icon-button" type="button" onClick={onClose} aria-label="Formular schließen">
@@ -1314,7 +1417,11 @@ function EventForm({
                 Abbrechen
               </button>
               <button className="button button-primary" type="submit" disabled={isSaving}>
-                {isSaving ? "Wird gespeichert …" : "Termin hinzufügen"}
+                {isSaving
+                  ? "Wird gespeichert …"
+                  : isEditing
+                    ? "Änderungen speichern"
+                    : "Termin hinzufügen"}
               </button>
             </div>
           </footer>
@@ -1338,6 +1445,7 @@ export default function KlassenkompassApp() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [sessionToken, setSessionToken] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent>();
   const [notice, setNotice] = useState("");
 
   function changeView(nextView: AppView) {
@@ -1383,22 +1491,54 @@ export default function KlassenkompassApp() {
 
   async function saveEvent(event: NewCalendarEvent) {
     const response = await fetch(apiUrl("/api/events"), {
-      method: "POST",
+      method: editingEvent ? "PUT" : "POST",
       headers: {
         Authorization: `Bearer ${sessionToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(event),
+      body: JSON.stringify(editingEvent ? { id: editingEvent.id, ...event } : event),
     });
     if (!response.ok) {
       throw new Error(await apiError(response, "Der Termin konnte nicht gespeichert werden."));
     }
 
     const body = (await response.json()) as { event: CalendarEvent };
-    setEvents((current) => [...current, body.event]);
+    setEvents((current) =>
+      editingEvent
+        ? current.map((entry) => (entry.id === body.event.id ? body.event : entry))
+        : [...current, body.event],
+    );
     setIsFormOpen(false);
+    setEditingEvent(undefined);
     setView("teacher");
-    setNotice(`„${body.event.title}“ wurde dauerhaft gespeichert.`);
+    setNotice(
+      editingEvent
+        ? `„${body.event.title}“ wurde aktualisiert.`
+        : `„${body.event.title}“ wurde dauerhaft gespeichert.`,
+    );
+  }
+
+  async function deleteEvent(event: CalendarEvent) {
+    setNotice("");
+    const response = await fetch(apiUrl("/api/events"), {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: event.id }),
+    });
+    if (!response.ok) {
+      throw new Error(await apiError(response, "Der Termin konnte nicht gelöscht werden."));
+    }
+
+    setEvents((current) => current.filter((entry) => entry.id !== event.id));
+    setNotice(`„${event.title}“ wurde gelöscht.`);
+  }
+
+  function closeEventForm() {
+    setIsFormOpen(false);
+    setEditingEvent(undefined);
   }
 
   async function leaveAccess() {
@@ -1428,12 +1568,26 @@ export default function KlassenkompassApp() {
           onAccess={leaveAccess}
           onAddClick={() => {
             setNotice("");
+            setEditingEvent(undefined);
             setIsFormOpen(true);
           }}
+          onEdit={(event) => {
+            setNotice("");
+            setEditingEvent(event);
+            setIsFormOpen(true);
+          }}
+          onDelete={deleteEvent}
           notice={notice}
         />
       )}
-      {isFormOpen && <EventForm onClose={() => setIsFormOpen(false)} onSave={saveEvent} />}
+      {isFormOpen && (
+        <EventForm
+          key={editingEvent?.id ?? "new-event"}
+          initialEvent={editingEvent}
+          onClose={closeEventForm}
+          onSave={saveEvent}
+        />
+      )}
     </>
   );
 }

@@ -19,6 +19,11 @@ export const calendarEvents = sqliteTable(
   (table) => [index("idx_calendar_events_start_date").on(table.startDate)],
 );
 
+export const calendarEventSeedRuns = sqliteTable("calendar_event_seed_runs", {
+  seedKey: text("seed_key").primaryKey(),
+  seededAt: text("seeded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const accessSessions = sqliteTable(
   "access_sessions",
   {

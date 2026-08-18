@@ -39,6 +39,7 @@ Versionen gleich.
 - getrennte, serverseitig geprüfte Zugangscodes für Schüler und Lehrkräfte
 - Schutz vor automatisiertem Ausprobieren und zeitlich begrenzte Sitzungen
 - dynamisches Formular für Zeiträume und einzelne Termine
+- Bearbeiten und bestätigtes Löschen bestehender Termine in der Lehreransicht
 - einfache Pflichtfeld- und Datumsprüfung
 - responsive Darstellung für Handy, Tablet und Desktop
 - gemeinsame, dauerhafte Speicherung in einer Server-Datenbank

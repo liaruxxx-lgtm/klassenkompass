@@ -473,14 +473,34 @@ p {
 }
 
 .code-input {
-  padding-right: 94px;
+  padding-right: 140px;
   letter-spacing: 0.04em;
+}
+
+.code-visibility-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-faint);
+  transform: translateY(-50%);
+}
+
+.code-visibility-toggle:hover,
+.code-visibility-toggle[aria-pressed="true"] {
+  background: var(--sage-soft);
+  color: var(--forest);
 }
 
 .code-field-status {
   position: absolute;
   top: 50%;
-  right: 10px;
+  right: 50px;
   padding: 5px 7px;
   border-radius: 6px;
   background: var(--paper-deep);
@@ -1293,6 +1313,20 @@ p {
   font-weight: 650;
 }
 
+.action-error-notice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 18px;
+  padding: 11px 14px;
+  border: 1px solid #d8b6ab;
+  border-radius: 11px;
+  background: #fbefea;
+  color: #823f31;
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .event-management {
   overflow: hidden;
 }
@@ -2057,6 +2091,14 @@ p {
     padding: 14px;
   }
 
+  .admin-event-list .event-actions {
+    grid-column: 1 / -1;
+  }
+
+  .admin-event-list .event-action-button {
+    min-height: 44px;
+  }
+
   .temporary-label {
     display: none;
   }
@@ -2115,6 +2157,46 @@ p {
   .form-footer .button {
     flex: 1;
   }
+}
+
+.event-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.event-action-button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  color: var(--forest);
+  font-size: 10px;
+  font-weight: 720;
+}
+
+.event-action-button:hover {
+  border-color: var(--sage);
+  background: var(--sage-soft);
+}
+
+.event-action-delete {
+  color: #8b4032;
+}
+
+.event-action-delete:hover {
+  border-color: #d7afa4;
+  background: #fbefea;
+}
+
+.event-action-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
 }
 
 @media (max-width: 480px) {
@@ -2286,8 +2368,15 @@ p {
   }
 
   .code-input {
-    padding-right: 13px;
+    padding-right: 58px;
     text-transform: uppercase;
+  }
+
+  .code-visibility-toggle {
+    right: 4px;
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
   }
 
   .code-field-status {
@@ -2707,6 +2796,22 @@ p {
 
   .admin-event-list {
     padding: 10px;
+  }
+
+  .admin-event-list .event-row {
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .admin-event-list .event-actions {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-event-list .event-action-button {
+    min-height: 46px;
+    font-size: 11px;
   }
 
   .modal-backdrop {
