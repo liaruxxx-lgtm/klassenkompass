@@ -182,6 +182,37 @@ function AccessView({
     }
   }, [accessMode, adminChallengeId]);
 
+  useEffect(() => {
+    const handleLocalModeShortcut = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest("input, textarea, select, button, [contenteditable='true']")
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (key !== "s" && key !== "d") return;
+
+      event.preventDefault();
+      setAccessMode(key === "s" ? "student" : "admin");
+      setAccessError("");
+      setAdminMessage("");
+      requestAnimationFrame(() => {
+        if (key === "s") accessCodeRef.current?.focus();
+        else adminEmailRef.current?.focus();
+      });
+    };
+
+    window.addEventListener("keydown", handleLocalModeShortcut);
+    return () => window.removeEventListener("keydown", handleLocalModeShortcut);
+  }, []);
+
   function switchAccessMode(mode: "student" | "admin") {
     setAccessMode(mode);
     setAccessError("");
@@ -339,6 +370,8 @@ function AccessView({
               className={accessMode === "student" ? "active" : ""}
               type="button"
               role="tab"
+              data-shortcut="S"
+              aria-keyshortcuts="S"
               aria-selected={accessMode === "student"}
               aria-controls="student-access-panel"
               onClick={() => switchAccessMode("student")}
@@ -351,6 +384,8 @@ function AccessView({
               className={accessMode === "admin" ? "active" : ""}
               type="button"
               role="tab"
+              data-shortcut="D"
+              aria-keyshortcuts="D"
               aria-selected={accessMode === "admin"}
               aria-controls="admin-access-panel"
               onClick={() => switchAccessMode("admin")}
