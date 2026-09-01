@@ -4484,3 +4484,398 @@ h3 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Timetable refinement: calmer surfaces, one clear accent per subject. */
+.student-page-timetable {
+  background: var(--paper);
+}
+
+.student-page-timetable .timetable-table-wrap {
+  border-color: var(--line);
+  box-shadow: var(--shadow-soft);
+}
+
+.student-page-timetable .timetable-lesson-card {
+  border-color: var(--line);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.student-page-timetable .timetable-entry {
+  --timetable-accent: var(--system-blue);
+  --timetable-group-background: rgb(10 132 255 / 0.1);
+  border-left-color: var(--timetable-accent);
+  background: transparent;
+  color: var(--timetable-accent);
+}
+
+.student-page-timetable .timetable-entry strong {
+  color: var(--ink);
+}
+
+.student-page-timetable .timetable-entry small {
+  color: var(--ink-faint);
+}
+
+.student-page-timetable .timetable-group {
+  background: var(--timetable-group-background);
+  color: var(--timetable-accent);
+}
+
+.student-page-timetable .timetable-tone-green {
+  --timetable-accent: #248a3d;
+  --timetable-group-background: #e8f8ed;
+}
+
+.student-page-timetable .timetable-tone-amber,
+.student-page-timetable .timetable-tone-gold {
+  --timetable-accent: #b35a00;
+  --timetable-group-background: #fff4dd;
+}
+
+.student-page-timetable .timetable-tone-terracotta,
+.student-page-timetable .timetable-tone-rose {
+  --timetable-accent: #d9382f;
+  --timetable-group-background: #ffebe9;
+}
+
+.student-page-timetable .timetable-tone-plum {
+  --timetable-accent: #c2185b;
+  --timetable-group-background: #fbe9ef;
+}
+
+.student-page-timetable .timetable-tone-blue,
+.student-page-timetable .timetable-tone-ocean,
+.student-page-timetable .timetable-tone-sky {
+  --timetable-accent: #007aa3;
+  --timetable-group-background: #e8f8fd;
+}
+
+@media (max-width: 760px) {
+  .student-page-timetable .app-header {
+    grid-template-columns: auto 1fr auto;
+    min-height: 68px;
+    padding-right: 15px;
+    padding-left: 15px;
+    border-bottom-color: var(--line);
+  }
+
+  .student-page-timetable .brand-compact .brand-wordmark {
+    display: inline;
+    font-size: 15px;
+    letter-spacing: -0.035em;
+  }
+
+  .student-page-timetable .current-role {
+    justify-self: end;
+    padding: 7px 10px;
+    border-radius: 12px;
+    box-shadow: none;
+  }
+
+  .student-page-timetable .current-role .role-label-long {
+    display: none;
+  }
+
+  .student-page-timetable .current-role .role-label-short {
+    display: inline;
+  }
+
+  .student-page-timetable .exit-link {
+    min-height: 42px;
+    padding-right: 4px;
+    padding-left: 8px;
+  }
+
+  .student-page-timetable .dashboard-shell {
+    width: calc(100% - 32px);
+    padding-top: 24px;
+    padding-bottom: calc(82px + env(safe-area-inset-bottom));
+  }
+
+  .student-page-timetable .student-mode-switcher {
+    margin-bottom: 25px;
+    border-radius: 17px;
+    box-shadow: none;
+  }
+
+  .student-page-timetable .timetable-heading {
+    margin-bottom: 20px;
+  }
+
+  .student-page-timetable .timetable-heading .eyebrow {
+    margin-bottom: 9px;
+  }
+
+  .student-page-timetable .timetable-heading h1 {
+    font-size: clamp(38px, 11vw, 48px);
+    letter-spacing: -0.055em;
+  }
+
+  .student-page-timetable .timetable-heading > div:first-child > p {
+    max-width: 33rem;
+    margin-top: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .student-page-timetable .timetable-summary {
+    display: none;
+  }
+
+  .student-page-timetable .timetable-day-tabs {
+    display: flex;
+    gap: 3px;
+    overflow-x: auto;
+    padding: 4px;
+    border-radius: 17px;
+    box-shadow: none;
+    scrollbar-width: none;
+  }
+
+  .student-page-timetable .timetable-day-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .student-page-timetable .timetable-day-tabs button {
+    flex: 1 0 0;
+    min-width: 53px;
+    min-height: 49px;
+    border-radius: 13px;
+  }
+
+  .student-page-timetable .timetable-day-tabs button > span {
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+
+  .student-page-timetable .timetable-day-tabs button > strong {
+    margin-top: 3px;
+    color: var(--ink-faint);
+    font-size: 9px;
+    font-weight: 650;
+  }
+
+  .student-page-timetable .timetable-day-tabs button.active > strong {
+    color: var(--forest);
+  }
+
+  .student-page-timetable .timetable-mobile-day {
+    margin-top: 18px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .student-page-timetable .timetable-mobile-heading {
+    padding: 3px 2px 16px;
+    border-bottom-color: var(--line);
+  }
+
+  .student-page-timetable .timetable-mobile-heading .overline {
+    margin-bottom: 5px;
+    font-size: 10px;
+  }
+
+  .student-page-timetable .timetable-mobile-heading h2 {
+    font-size: 29px;
+    letter-spacing: -0.045em;
+  }
+
+  .student-page-timetable .timetable-mobile-heading > span {
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .student-page-timetable .timetable-mobile-list {
+    gap: 9px;
+    padding: 13px 0 0;
+  }
+
+  .student-page-timetable .timetable-mobile-lesson {
+    grid-template-columns: 61px minmax(0, 1fr);
+    gap: 12px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .student-page-timetable .timetable-mobile-time {
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 14px 0 0;
+    border-right: 0;
+    text-align: left;
+  }
+
+  .student-page-timetable .timetable-mobile-time strong {
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background: transparent;
+    color: var(--forest);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+  }
+
+  .student-page-timetable .timetable-mobile-time span {
+    margin-top: 8px;
+    color: var(--ink-soft);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  .student-page-timetable .timetable-mobile-time small {
+    margin-top: 5px;
+    color: var(--ink-faint);
+    font-size: 10px;
+    line-height: 1.35;
+  }
+
+  .student-page-timetable .timetable-mobile-lesson .timetable-lesson-card,
+  .student-page-timetable .timetable-mobile-lesson .timetable-lesson-card.is-split {
+    min-height: 76px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  }
+
+  .student-page-timetable .timetable-mobile-lesson .timetable-entry {
+    min-height: 74px;
+    padding: 14px 15px 13px 16px;
+    border-left-width: 4px;
+  }
+
+  .student-page-timetable .timetable-mobile-lesson .timetable-entry strong {
+    font-size: 16px;
+    letter-spacing: -0.015em;
+  }
+
+  .student-page-timetable .timetable-mobile-lesson .timetable-entry small {
+    margin-top: 7px;
+    font-size: 11px;
+  }
+
+  .student-page-timetable .timetable-mobile-lesson .timetable-group {
+    margin-top: 7px;
+    padding: 3px 6px;
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 750;
+  }
+
+  .student-page-timetable .timetable-mobile-lesson .timetable-entry + .timetable-entry {
+    border-top-color: var(--line);
+  }
+
+  .student-page-timetable .timetable-mobile-break {
+    min-height: 42px;
+    margin: 2px 0;
+    padding: 9px 0;
+    border-top: 1px solid var(--line);
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    border-left: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink-soft);
+  }
+
+  .student-page-timetable .timetable-mobile-break span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ink-soft);
+    font-size: 11px;
+    font-weight: 720;
+  }
+
+  .student-page-timetable .timetable-mobile-break span::before {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--ochre);
+    content: "";
+  }
+
+  .student-page-timetable .timetable-mobile-break strong {
+    color: var(--ink-faint);
+    font-size: 10px;
+    font-weight: 650;
+  }
+
+  .student-page-timetable .timetable-note {
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 10px;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 480px) {
+  .student-page-timetable .current-role span {
+    display: inline;
+  }
+
+  .student-page-timetable .current-role .role-label-long {
+    display: none;
+  }
+
+  .student-page-timetable .current-role .role-label-short {
+    display: inline;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .student-page-timetable .timetable-entry {
+    --timetable-group-background: rgb(10 132 255 / 0.14);
+  }
+
+  .student-page-timetable .timetable-tone-green {
+    --timetable-accent: #30d158;
+    --timetable-group-background: rgb(48 209 88 / 0.14);
+  }
+
+  .student-page-timetable .timetable-tone-amber,
+  .student-page-timetable .timetable-tone-gold {
+    --timetable-accent: #ff9f0a;
+    --timetable-group-background: rgb(255 159 10 / 0.14);
+  }
+
+  .student-page-timetable .timetable-tone-terracotta,
+  .student-page-timetable .timetable-tone-rose {
+    --timetable-accent: #ff453a;
+    --timetable-group-background: rgb(255 69 58 / 0.14);
+  }
+
+  .student-page-timetable .timetable-tone-plum {
+    --timetable-accent: #ff375f;
+    --timetable-group-background: rgb(255 55 95 / 0.14);
+  }
+
+  .student-page-timetable .timetable-tone-blue,
+  .student-page-timetable .timetable-tone-ocean,
+  .student-page-timetable .timetable-tone-sky {
+    --timetable-accent: #64d2ff;
+    --timetable-group-background: rgb(100 210 255 / 0.14);
+  }
+
+  .student-page-timetable .app-header {
+    background: rgb(28 28 30 / 0.9);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+
+  .student-page-timetable .timetable-mobile-lesson .timetable-lesson-card,
+  .student-page-timetable .timetable-mobile-lesson .timetable-lesson-card.is-split {
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.34);
+  }
+}

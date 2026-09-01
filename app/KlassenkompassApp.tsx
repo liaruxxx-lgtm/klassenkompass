@@ -1394,10 +1394,10 @@ function TimetableView() {
       <div className="timetable-heading">
         <div>
           <span className="eyebrow">Stundenplan-Modus</span>
-          <h1 id="timetable-title">Dein Stundenplan.</h1>
+          <h1 id="timetable-title">Dein Stundenplan</h1>
           <p>
-            Alle Unterrichtszeiten von Montag bis Freitag auf einen Blick.
-            Gruppenfächer sind direkt in der jeweiligen Stunde aufgeteilt.
+            Dein Wochenplan mit Unterricht, Pausen und Gruppenfächern – klar
+            gegliedert für jeden Schultag.
           </p>
         </div>
         <div className="timetable-summary" aria-label="Unterrichtszeiten">
@@ -1450,7 +1450,7 @@ function TimetableView() {
             <p className="overline">Tagesplan</p>
             <h2>{selectedDayDetails.label}</h2>
           </div>
-          <span>{selectedDayEnd} Uhr Schluss</span>
+          <span>Bis {selectedDayEnd} Uhr</span>
         </div>
         <ol className="timetable-mobile-list" aria-label={`Stundenplan für ${selectedDayDetails.label}`}>
           {timetableRows.map((row) =>
