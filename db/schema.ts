@@ -35,6 +35,48 @@ export const accessSessions = sqliteTable(
   (table) => [index("idx_access_sessions_expires_at").on(table.expiresAt)],
 );
 
+export const accessSessionActors = sqliteTable("access_session_actors", {
+  tokenHash: text("token_hash").primaryKey(),
+  actorEmail: text("actor_name").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const adminLoginChallenges = sqliteTable(
+  "admin_login_challenges",
+  {
+    id: text("id").primaryKey(),
+    adminEmail: text("admin_email").notNull(),
+    codeHash: text("code_hash").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    usedAt: text("used_at"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("idx_admin_login_challenges_admin_email").on(table.adminEmail),
+    index("idx_admin_login_challenges_expires_at").on(table.expiresAt),
+  ],
+);
+
+export const calendarEventAuditLogs = sqliteTable(
+  "calendar_event_audit_logs",
+  {
+    id: text("id").primaryKey(),
+    eventId: text("event_id").notNull(),
+    action: text("action").notNull(),
+    actorEmail: text("actor_name").notNull(),
+    actorRole: text("actor_role").notNull(),
+    changedAt: text("changed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    beforeState: text("before_state"),
+    afterState: text("after_state"),
+    restoredFromLogId: text("restored_from_log_id"),
+  },
+  (table) => [
+    index("idx_calendar_event_audit_logs_changed_at").on(table.changedAt),
+    index("idx_calendar_event_audit_logs_event_id").on(table.eventId),
+  ],
+);
+
 export const accessRateLimits = sqliteTable(
   "access_rate_limits",
   {

@@ -6,6 +6,14 @@ import KlassenkompassApp from "../app/KlassenkompassApp.tsx";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
+Object.defineProperty(globalThis, "requestAnimationFrame", {
+  configurable: true,
+  value(callback) {
+    callback();
+    return 1;
+  },
+});
+
 let lastScrolledSection = "";
 
 Object.defineProperty(globalThis, "window", {
@@ -42,8 +50,29 @@ Object.defineProperty(globalThis, "document", {
 });
 
 const persistedEvents = [];
+const persistedAuditLogs = [];
+let activeActorEmail = "";
+let pendingAdminEmail = "";
+let auditSequence = 0;
 const studentTestCode = "STUDENT-TEST-CODE-ONLY";
-const teacherTestCode = "TEACHER-TEST-CODE-ONLY";
+const adminTestEmail = "erika.muster@schule.example";
+const secondAdminTestEmail = "mara.admin@schule.example";
+const adminVerificationCode = "482913";
+
+function recordAudit(action, beforeState, afterState, restoredFromLogId) {
+  auditSequence += 1;
+  const snapshot = (value) => (value ? structuredClone(value) : null);
+  persistedAuditLogs.unshift({
+    id: `audit-${auditSequence}`,
+    eventId: afterState?.id ?? beforeState?.id,
+    action,
+    actorEmail: activeActorEmail,
+    changedAt: new Date(Date.UTC(2099, 0, 1, 9, auditSequence)).toISOString(),
+    beforeState: snapshot(beforeState),
+    afterState: snapshot(afterState),
+    ...(restoredFromLogId ? { restoredFromLogId } : {}),
+  });
+}
 
 Object.defineProperty(globalThis, "fetch", {
   configurable: true,
@@ -53,19 +82,49 @@ Object.defineProperty(globalThis, "fetch", {
 
     if (url.endsWith("/api/access") && method === "POST") {
       const { code } = JSON.parse(init.body);
-      const role =
-        code.toUpperCase() === studentTestCode
-          ? "student"
-          : code.toUpperCase() === teacherTestCode
-            ? "teacher"
-            : null;
-      if (!role) {
+      if (code.toUpperCase() !== studentTestCode) {
         return Response.json(
           { error: "Dieser Zugangscode ist nicht gültig." },
           { status: 401 },
         );
       }
-      return Response.json({ role, token: `server-token-${role}` });
+      activeActorEmail = "";
+      return Response.json({ role: "student", token: "server-token-student" });
+    }
+
+    if (url.endsWith("/api/admin-auth/request") && method === "POST") {
+      const { email } = JSON.parse(init.body);
+      pendingAdminEmail = email.trim().toLowerCase();
+      return Response.json(
+        {
+          challengeId: "admin-challenge-1",
+          message:
+            "Wenn diese Adresse für die Admin-Ansicht freigegeben ist, wurde ein Einmalcode versendet.",
+        },
+        { status: 202 },
+      );
+    }
+
+    if (url.endsWith("/api/admin-auth/verify") && method === "POST") {
+      const { email, challengeId, code } = JSON.parse(init.body);
+      const normalizedEmail = email.trim().toLowerCase();
+      if (
+        ![adminTestEmail, secondAdminTestEmail].includes(normalizedEmail) ||
+        normalizedEmail !== pendingAdminEmail ||
+        challengeId !== "admin-challenge-1" ||
+        code !== adminVerificationCode
+      ) {
+        return Response.json(
+          { error: "Der Einmalcode ist falsch, abgelaufen oder bereits verwendet." },
+          { status: 401 },
+        );
+      }
+      activeActorEmail = normalizedEmail;
+      return Response.json({
+        role: "teacher",
+        token: "server-token-teacher",
+        actorEmail: normalizedEmail,
+      });
     }
 
     if (url.endsWith("/api/events") && method === "GET") {
@@ -78,6 +137,7 @@ Object.defineProperty(globalThis, "fetch", {
         ...JSON.parse(init.body),
       };
       persistedEvents.push(event);
+      recordAudit("create", null, event);
       return Response.json({ event }, { status: 201 });
     }
 
@@ -87,7 +147,9 @@ Object.defineProperty(globalThis, "fetch", {
       if (index < 0) {
         return Response.json({ error: "Der Termin wurde nicht gefunden." }, { status: 404 });
       }
+      const previousEvent = structuredClone(persistedEvents[index]);
       persistedEvents[index] = event;
+      recordAudit("update", previousEvent, event);
       return Response.json({ event });
     }
 
@@ -97,8 +159,44 @@ Object.defineProperty(globalThis, "fetch", {
       if (index < 0) {
         return Response.json({ error: "Der Termin wurde nicht gefunden." }, { status: 404 });
       }
-      persistedEvents.splice(index, 1);
+      const [deletedEvent] = persistedEvents.splice(index, 1);
+      recordAudit("delete", deletedEvent, null);
       return Response.json({ id });
+    }
+
+    if (url.includes("/api/audit-logs?") && method === "GET") {
+      const offset = Number(new URL(url, "http://localhost").searchParams.get("offset") ?? 0);
+      return Response.json({
+        logs: persistedAuditLogs.slice(offset, offset + 50),
+        hasMore: persistedAuditLogs.length > offset + 50,
+      });
+    }
+
+    if (url.endsWith("/api/audit-logs/restore") && method === "POST") {
+      const { auditLogId } = JSON.parse(init.body);
+      const sourceLog = persistedAuditLogs.find((log) => log.id === auditLogId);
+      if (!sourceLog) {
+        return Response.json(
+          { error: "Der Protokolleintrag wurde nicht gefunden." },
+          { status: 404 },
+        );
+      }
+      const currentIndex = persistedEvents.findIndex(
+        (event) => event.id === sourceLog.eventId,
+      );
+      const currentState =
+        currentIndex >= 0 ? structuredClone(persistedEvents[currentIndex]) : null;
+      const restoredState = sourceLog.beforeState
+        ? structuredClone(sourceLog.beforeState)
+        : null;
+      if (restoredState) {
+        if (currentIndex >= 0) persistedEvents[currentIndex] = restoredState;
+        else persistedEvents.push(restoredState);
+      } else if (currentIndex >= 0) {
+        persistedEvents.splice(currentIndex, 1);
+      }
+      recordAudit("restore", currentState, restoredState, sourceLog.id);
+      return Response.json({ eventId: sourceLog.eventId, event: restoredState });
     }
 
     return Response.json({ error: "Nicht gefunden" }, { status: 404 });
@@ -146,33 +244,41 @@ async function submit(renderer) {
 
 async function submitAccess(renderer) {
   await act(async () => {
-    await renderer.root.findByProps({ className: "access-form" }).props.onSubmit({
-      preventDefault() {},
-    });
+    const form = renderer.root
+      .findAllByType("form")
+      .find((candidate) => candidate.props.className?.includes("access-form"));
+    assert.ok(form, "Zugangsformular wurde nicht gefunden.");
+    await form.props.onSubmit({ preventDefault() {} });
   });
 }
 
 test("loads, creates, edits, and deletes events through the shared server API", async () => {
   persistedEvents.length = 0;
+  persistedAuditLogs.length = 0;
+  activeActorEmail = "";
+  pendingAdminEmail = "";
+  auditSequence = 0;
   let renderer;
   await act(async () => {
     renderer = create(React.createElement(KlassenkompassApp));
   });
 
-  assert.match(pageText(renderer), /Klassenbereich öffnen/);
+  assert.match(pageText(renderer), /Schülerzugang öffnen/);
   assert.doesNotMatch(pageText(renderer), /Aktuelle Epoche/);
   assert.equal(renderer.root.findAllByProps({ className: "role-switch" }).length, 0);
 
   const accessCodeInput = renderer.root.findByProps({ id: "access-code" });
   assert.equal(accessCodeInput.props.type, "password");
+  assert.equal(renderer.root.findAllByProps({ id: "actor-name" }).length, 0);
+  assert.equal(renderer.root.findAllByProps({ id: "admin-email" }).length, 0);
   const showAccessCodeButton = renderer.root.findByProps({
-    "aria-label": "Zugangscode anzeigen",
+    "aria-label": "Klassencode anzeigen",
   });
   assert.equal(showAccessCodeButton.props["aria-pressed"], false);
   await click(showAccessCodeButton);
   assert.equal(renderer.root.findByProps({ id: "access-code" }).props.type, "text");
   const hideAccessCodeButton = renderer.root.findByProps({
-    "aria-label": "Zugangscode verbergen",
+    "aria-label": "Klassencode verbergen",
   });
   assert.equal(hideAccessCodeButton.props["aria-pressed"], true);
   await click(hideAccessCodeButton);
@@ -194,6 +300,20 @@ test("loads, creates, edits, and deletes events through the shared server API", 
   assert.match(pageText(renderer), /Chronologische Übersicht/);
   assert.match(pageText(renderer), /Schüleransicht/);
 
+  await click(renderer.root.findByProps({ id: "student-mode-timetable" }));
+  assert.equal(renderer.root.findByProps({ id: "student-mode-timetable" }).props["aria-selected"], true);
+  assert.match(pageText(renderer), /Stundenplan-Modus/);
+  assert.match(pageText(renderer), /Dein Stundenplan/);
+  assert.match(pageText(renderer), /Mittagspause/);
+  assert.match(pageText(renderer), /Gruppe 1/);
+  assert.match(pageText(renderer), /Gruppe 2/);
+  assert.match(pageText(renderer), /Eur/);
+  assert.match(pageText(renderer), /Mus/);
+
+  await click(renderer.root.findByProps({ id: "student-mode-year" }));
+  assert.equal(renderer.root.findByProps({ id: "student-mode-year" }).props["aria-selected"], true);
+  assert.match(pageText(renderer), /Aktuelle Epoche/);
+
   await click(renderer.root.findByProps({ "aria-label": "Kalenderansicht öffnen" }));
   assert.equal(renderer.root.findAllByProps({ role: "dialog" }).length, 1);
   assert.match(pageText(renderer), /Kalender/);
@@ -208,11 +328,27 @@ test("loads, creates, edits, and deletes events through the shared server API", 
   assert.equal(renderer.root.findAllByProps({ role: "dialog" }).length, 0);
 
   await click(findButton(renderer.root, "Zugang wechseln", { exact: true }));
-  await change(renderer.root.findByProps({ id: "access-code" }), teacherTestCode);
+  await click(findButton(renderer.root, "Admin", { exact: true }));
+  assert.equal(renderer.root.findAllByProps({ id: "access-code" }).length, 0);
+  assert.equal(renderer.root.findByProps({ id: "admin-email" }).props.type, "email");
+  await submitAccess(renderer);
+  assert.match(pageText(renderer), /freigegebene E-Mail-Adresse/);
+  await change(renderer.root.findByProps({ id: "admin-email" }), adminTestEmail);
+  await submitAccess(renderer);
+  assert.match(pageText(renderer), /Code angefordert/);
+  assert.match(pageText(renderer), new RegExp(adminTestEmail));
+  await change(renderer.root.findByProps({ id: "admin-verification-code" }), "111111");
+  await submitAccess(renderer);
+  assert.match(pageText(renderer), /Einmalcode ist falsch/);
+  await change(
+    renderer.root.findByProps({ id: "admin-verification-code" }),
+    adminVerificationCode,
+  );
   await submitAccess(renderer);
   assert.match(pageText(renderer), /Jahresrahmen verwalten/);
   assert.match(pageText(renderer), /Noch keine Termine eingetragen/);
-  assert.match(pageText(renderer), /Lehreransicht/);
+  assert.match(pageText(renderer), /Admin-Ansicht/);
+  assert.match(pageText(renderer), new RegExp(`Verifiziert: ${adminTestEmail}`));
 
   await click(findButton(renderer.root, "Termin hinzufügen", { exact: true }));
   assert.equal(renderer.root.findAllByProps({ role: "dialog" }).length, 1);
@@ -278,6 +414,21 @@ test("loads, creates, edits, and deletes events through the shared server API", 
   assert.equal(persistedEvents[0].id, "server-event-1");
   assert.equal(persistedEvents[0].location, "Kleiner Saal");
 
+  await click(findButton(renderer.root, "Änderungsprotokoll", { exact: true }));
+  const auditText = pageText(renderer);
+  assert.match(auditText, /2 Einträge/);
+  assert.match(auditText, new RegExp(adminTestEmail));
+  assert.match(auditText, /\d{2}\.\d{2}\.\d{4}, \d{2}:\d{2} Uhr/);
+  assert.match(auditText, /Termin bearbeitet/);
+  assert.match(auditText, /Termin erstellt/);
+  assert.match(auditText, /Vorherigen Stand und Änderung ansehen/);
+  assert.match(auditText, /Vorher/);
+  assert.match(auditText, /Nachher/);
+  assert.match(auditText, /geändert/);
+  assert.match(auditText, /Großer Saal/);
+  assert.match(auditText, /Kleiner Saal/);
+  await click(renderer.root.findByProps({ id: "events-tab" }));
+
   await click(findButton(renderer.root, "Zugang wechseln", { exact: true }));
   await change(renderer.root.findByProps({ id: "access-code" }), studentTestCode);
   await submitAccess(renderer);
@@ -316,7 +467,7 @@ test("loads, creates, edits, and deletes events through the shared server API", 
   await act(async () => {
     freshRenderer = create(React.createElement(KlassenkompassApp));
   });
-  assert.match(pageText(freshRenderer), /Klassenbereich öffnen/);
+  assert.match(pageText(freshRenderer), /Schülerzugang öffnen/);
   assert.doesNotMatch(pageText(freshRenderer), /Bearbeiteter Prüftermin/);
 
   await change(freshRenderer.root.findByProps({ id: "access-code" }), studentTestCode);
@@ -324,18 +475,46 @@ test("loads, creates, edits, and deletes events through the shared server API", 
   assert.match(pageText(freshRenderer), /Bearbeiteter Prüftermin/);
 
   await click(findButton(freshRenderer.root, "Zugang wechseln", { exact: true }));
-  await change(freshRenderer.root.findByProps({ id: "access-code" }), teacherTestCode);
+  await click(findButton(freshRenderer.root, "Admin", { exact: true }));
+  await change(
+    freshRenderer.root.findByProps({ id: "admin-email" }),
+    secondAdminTestEmail,
+  );
   await submitAccess(freshRenderer);
+  await change(
+    freshRenderer.root.findByProps({ id: "admin-verification-code" }),
+    adminVerificationCode,
+  );
+  await submitAccess(freshRenderer);
+
+  await click(findButton(freshRenderer.root, "Änderungsprotokoll", { exact: true }));
+  await click(findButton(freshRenderer.root, "Stand davor wiederherstellen", { exact: true }));
+  assert.equal(persistedEvents.length, 1);
+  assert.equal(persistedEvents[0].title, "Prüftermin");
+  assert.equal(persistedEvents[0].location, "Großer Saal");
+  assert.match(pageText(freshRenderer), /Früheren Stand wiederhergestellt/);
+  assert.match(pageText(freshRenderer), new RegExp(secondAdminTestEmail));
+  await click(freshRenderer.root.findByProps({ id: "events-tab" }));
+  assert.equal(
+    freshRenderer.root.findAllByProps({
+      "aria-label": "„Prüftermin“ bearbeiten",
+    }).length,
+    1,
+  );
   await click(findButton(freshRenderer.root, "Löschen", { exact: true }));
   assert.equal(persistedEvents.length, 0);
   assert.equal(
     freshRenderer.root.findAllByProps({
-      "aria-label": "„Bearbeiteter Prüftermin“ bearbeiten",
+      "aria-label": "„Prüftermin“ bearbeiten",
     }).length,
     0,
   );
   assert.match(pageText(freshRenderer), /0 Termine/);
   assert.match(pageText(freshRenderer), /wurde gelöscht/);
+
+  await click(findButton(freshRenderer.root, "Änderungsprotokoll", { exact: true }));
+  assert.match(pageText(freshRenderer), /Termin gelöscht/);
+  assert.match(pageText(freshRenderer), /Früheren Stand wiederhergestellt/);
 
   await act(async () => {
     freshRenderer.unmount();

@@ -2,12 +2,16 @@ import { and, eq, gt, lt } from "drizzle-orm";
 import { env } from "cloudflare:workers";
 import { getDb } from "../db";
 import { ensureDatabaseSchema } from "../db/ensure-schema";
-import { accessRateLimits, accessSessions } from "../db/schema";
+import {
+  accessRateLimits,
+  accessSessionActors,
+  accessSessions,
+} from "../db/schema";
 
 export type AccessRole = "student" | "teacher";
 
 const studentSessionLifetimeMs = 12 * 60 * 60 * 1000;
-const teacherSessionLifetimeMs = 4 * 60 * 60 * 1000;
+export const teacherSessionLifetimeMs = 4 * 60 * 60 * 1000;
 const failedAttemptLimit = 5;
 const attemptWindowMs = 15 * 60 * 1000;
 const blockDurationMs = 15 * 60 * 1000;
@@ -17,41 +21,30 @@ const maximumAccessCodeLength = 128;
 
 export class AccessRateLimitError extends Error {
   constructor(public readonly retryAfterSeconds: number) {
-    super("Zu viele falsche Versuche.");
+    super("Zu viele Versuche.");
     this.name = "AccessRateLimitError";
   }
 }
 
-async function hashToken(token: string) {
-  const bytes = new TextEncoder().encode(token);
+export function getAuthProtectionSecret() {
+  const secret = env.AUTH_RATE_LIMIT_SECRET?.trim();
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      "Der Zugangsschutz ist auf dem Server noch nicht sicher eingerichtet.",
+    );
+  }
+  return secret;
+}
+
+export async function hashAccessValue(value: string) {
+  const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest), (byte) =>
     byte.toString(16).padStart(2, "0"),
   ).join("");
 }
 
-function accessCodes() {
-  const codes = {
-    student: env.STUDENT_ACCESS_CODE?.trim().toUpperCase(),
-    teacher: env.ADMIN_ACCESS_CODE?.trim().toUpperCase(),
-  };
-
-  if (
-    !codes.student ||
-    !codes.teacher ||
-    codes.student.length < minimumAccessCodeLength ||
-    codes.teacher.length < minimumAccessCodeLength ||
-    codes.student.length > maximumAccessCodeLength ||
-    codes.teacher.length > maximumAccessCodeLength ||
-    codes.student === codes.teacher
-  ) {
-    throw new Error("Der Zugang ist auf dem Server noch nicht sicher eingerichtet.");
-  }
-
-  return { student: codes.student, teacher: codes.teacher };
-}
-
-function constantTimeEqual(first: string, second: string) {
+export function constantTimeEqual(first: string, second: string) {
   if (first.length !== second.length) return false;
   let difference = 0;
   for (let index = 0; index < first.length; index += 1) {
@@ -60,20 +53,40 @@ function constantTimeEqual(first: string, second: string) {
   return difference === 0;
 }
 
-async function accessAttemptKey(request: Request) {
-  const secret = env.AUTH_RATE_LIMIT_SECRET?.trim();
-  if (!secret || secret.length < 32) {
-    throw new Error("Der Zugangsschutz ist auf dem Server noch nicht sicher eingerichtet.");
+function configuredStudentCode() {
+  const code = env.STUDENT_ACCESS_CODE?.trim().toUpperCase();
+  if (
+    !code ||
+    code.length < minimumAccessCodeLength ||
+    code.length > maximumAccessCodeLength
+  ) {
+    throw new Error(
+      "Der Schülerzugang ist auf dem Server noch nicht sicher eingerichtet.",
+    );
   }
-
-  const clientAddress = request.headers.get("cf-connecting-ip")?.trim() || "unknown";
-  return hashToken(`${secret}\u0000${clientAddress}`);
+  return code;
 }
 
-async function enforceAccessRateLimit(request: Request) {
+async function accessAttemptKey(
+  request: Request,
+  scope: string,
+  subject = "",
+) {
+  const clientAddress =
+    request.headers.get("cf-connecting-ip")?.trim() || "unknown";
+  return hashAccessValue(
+    `${getAuthProtectionSecret()}\u0000${scope}\u0000${clientAddress}\u0000${subject}`,
+  );
+}
+
+export async function enforceAccessRateLimit(
+  request: Request,
+  scope: string,
+  subject = "",
+) {
   const db = getDb();
   const now = Date.now();
-  const identifierHash = await accessAttemptKey(request);
+  const identifierHash = await accessAttemptKey(request, scope, subject);
 
   await db
     .delete(accessRateLimits)
@@ -105,13 +118,14 @@ async function enforceAccessRateLimit(request: Request) {
   return { identifierHash, attempt };
 }
 
-async function recordAccessFailure(
+export async function recordAccessAttempt(
   identifierHash: string,
   attempt: typeof accessRateLimits.$inferSelect | undefined,
 ) {
   const now = Date.now();
   const failures = (attempt?.failures ?? 0) + 1;
-  const blockedUntil = failures >= failedAttemptLimit ? now + blockDurationMs : null;
+  const blockedUntil =
+    failures >= failedAttemptLimit ? now + blockDurationMs : null;
   const values = {
     identifierHash,
     failures,
@@ -138,45 +152,61 @@ async function recordAccessFailure(
   }
 }
 
-export async function createAccessSession(request: Request, code: string) {
+export async function clearAccessRateLimit(identifierHash: string) {
+  await getDb()
+    .delete(accessRateLimits)
+    .where(eq(accessRateLimits.identifierHash, identifierHash));
+}
+
+export async function cleanupExpiredAccessSessions(nowIso: string) {
+  await getDb()
+    .delete(accessSessions)
+    .where(lt(accessSessions.expiresAt, nowIso));
+  await env.DB.prepare(`
+    DELETE FROM access_session_actors
+    WHERE token_hash NOT IN (SELECT token_hash FROM access_sessions)
+  `).run();
+}
+
+export async function createStudentAccessSession(
+  request: Request,
+  code: string,
+) {
   await ensureDatabaseSchema();
   const normalizedCode = code.trim().toUpperCase();
-  const codes = accessCodes();
-  const rateLimit = await enforceAccessRateLimit(request);
-
-  const [candidateHash, studentHash, teacherHash] = await Promise.all([
-    hashToken(normalizedCode),
-    hashToken(codes.student),
-    hashToken(codes.teacher),
+  const studentCode = configuredStudentCode();
+  const rateLimit = await enforceAccessRateLimit(request, "student-code");
+  const [candidateHash, studentHash] = await Promise.all([
+    hashAccessValue(normalizedCode),
+    hashAccessValue(studentCode),
   ]);
 
-  let role: AccessRole | undefined;
-  if (constantTimeEqual(candidateHash, teacherHash)) role = "teacher";
-  if (constantTimeEqual(candidateHash, studentHash)) role = "student";
-  if (!role) {
-    await recordAccessFailure(rateLimit.identifierHash, rateLimit.attempt);
+  if (!constantTimeEqual(candidateHash, studentHash)) {
+    await recordAccessAttempt(rateLimit.identifierHash, rateLimit.attempt);
     return null;
   }
 
-  await getDb()
-    .delete(accessRateLimits)
-    .where(eq(accessRateLimits.identifierHash, rateLimit.identifierHash));
+  await clearAccessRateLimit(rateLimit.identifierHash);
 
   const token = `${crypto.randomUUID()}.${crypto.randomUUID()}`;
-  const tokenHash = await hashToken(token);
+  const tokenHash = await hashAccessValue(token);
   const now = new Date();
-  const sessionLifetimeMs =
-    role === "teacher" ? teacherSessionLifetimeMs : studentSessionLifetimeMs;
-  const expiresAt = new Date(now.getTime() + sessionLifetimeMs).toISOString();
-  const db = getDb();
+  const expiresAt = new Date(
+    now.getTime() + studentSessionLifetimeMs,
+  ).toISOString();
 
-  await db.delete(accessSessions).where(lt(accessSessions.expiresAt, now.toISOString()));
-  await db.insert(accessSessions).values({ tokenHash, role, expiresAt });
+  await cleanupExpiredAccessSessions(now.toISOString());
+  await env.DB.prepare(`
+    INSERT INTO access_sessions (token_hash, role, expires_at)
+    VALUES (?, 'student', ?)
+  `)
+    .bind(tokenHash, expiresAt)
+    .run();
 
-  return { role, token, expiresAt };
+  return { role: "student" as const, token, expiresAt };
 }
 
-export async function getAccessRole(request: Request) {
+export async function getAccessIdentity(request: Request) {
   await ensureDatabaseSchema();
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ")
@@ -185,11 +215,18 @@ export async function getAccessRole(request: Request) {
 
   if (!token) return null;
 
-  const tokenHash = await hashToken(token);
+  const tokenHash = await hashAccessValue(token);
   const now = new Date().toISOString();
   const [session] = await getDb()
-    .select({ role: accessSessions.role })
+    .select({
+      role: accessSessions.role,
+      actorEmail: accessSessionActors.actorEmail,
+    })
     .from(accessSessions)
+    .leftJoin(
+      accessSessionActors,
+      eq(accessSessionActors.tokenHash, accessSessions.tokenHash),
+    )
     .where(
       and(
         eq(accessSessions.tokenHash, tokenHash),
@@ -198,9 +235,15 @@ export async function getAccessRole(request: Request) {
     )
     .limit(1);
 
-  return session?.role === "student" || session?.role === "teacher"
-    ? session.role
-    : null;
+  if (session?.role !== "student" && session?.role !== "teacher") return null;
+  return {
+    role: session.role,
+    ...(session.actorEmail ? { actorEmail: session.actorEmail } : {}),
+  };
+}
+
+export async function getAccessRole(request: Request) {
+  return (await getAccessIdentity(request))?.role ?? null;
 }
 
 export async function revokeAccessSession(request: Request) {
@@ -212,7 +255,13 @@ export async function revokeAccessSession(request: Request) {
 
   if (!token) return;
 
-  await getDb()
-    .delete(accessSessions)
-    .where(eq(accessSessions.tokenHash, await hashToken(token)));
+  const tokenHash = await hashAccessValue(token);
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM access_session_actors WHERE token_hash = ?").bind(
+      tokenHash,
+    ),
+    env.DB.prepare("DELETE FROM access_sessions WHERE token_hash = ?").bind(
+      tokenHash,
+    ),
+  ]);
 }

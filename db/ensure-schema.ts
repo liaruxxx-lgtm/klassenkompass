@@ -65,6 +65,32 @@ export function ensureDatabaseSchema() {
           ON access_sessions (expires_at)
         `),
         database.prepare(`
+          CREATE TABLE IF NOT EXISTS access_session_actors (
+            token_hash TEXT PRIMARY KEY NOT NULL,
+            actor_name TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )
+        `),
+        database.prepare(`
+          CREATE TABLE IF NOT EXISTS admin_login_challenges (
+            id TEXT PRIMARY KEY NOT NULL,
+            admin_email TEXT NOT NULL,
+            code_hash TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            used_at TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )
+        `),
+        database.prepare(`
+          CREATE INDEX IF NOT EXISTS idx_admin_login_challenges_admin_email
+          ON admin_login_challenges (admin_email)
+        `),
+        database.prepare(`
+          CREATE INDEX IF NOT EXISTS idx_admin_login_challenges_expires_at
+          ON admin_login_challenges (expires_at)
+        `),
+        database.prepare(`
           CREATE TABLE IF NOT EXISTS access_rate_limits (
             identifier_hash TEXT PRIMARY KEY NOT NULL,
             failures INTEGER NOT NULL,
@@ -97,6 +123,27 @@ export function ensureDatabaseSchema() {
           ON calendar_events (start_date)
         `),
         database.prepare(`
+          CREATE TABLE IF NOT EXISTS calendar_event_audit_logs (
+            id TEXT PRIMARY KEY NOT NULL,
+            event_id TEXT NOT NULL,
+            action TEXT NOT NULL,
+            actor_name TEXT NOT NULL,
+            actor_role TEXT NOT NULL,
+            changed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            before_state TEXT,
+            after_state TEXT,
+            restored_from_log_id TEXT
+          )
+        `),
+        database.prepare(`
+          CREATE INDEX IF NOT EXISTS idx_calendar_event_audit_logs_changed_at
+          ON calendar_event_audit_logs (changed_at)
+        `),
+        database.prepare(`
+          CREATE INDEX IF NOT EXISTS idx_calendar_event_audit_logs_event_id
+          ON calendar_event_audit_logs (event_id)
+        `),
+        database.prepare(`
           CREATE TABLE IF NOT EXISTS calendar_event_seed_runs (
             seed_key TEXT PRIMARY KEY NOT NULL,
             seeded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -115,6 +162,7 @@ export function ensureDatabaseSchema() {
             VALUES (?)
           `)
           .bind(eighthGradeSeedKey),
+        database.prepare("PRAGMA optimize"),
       ])
       .catch((error) => {
         initialization = undefined;

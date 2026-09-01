@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 const title = "Klassenkompass – das Klassenjahr im Blick";
 const description =
-  "Die ruhige Übersicht für Epochen, Projekte und wichtige Termine einer achten Klasse.";
+  "Die ruhige Übersicht für Stundenplan, Epochen, Projekte und wichtige Termine einer achten Klasse.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();

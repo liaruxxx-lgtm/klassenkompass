@@ -36,9 +36,11 @@ test("server-renders the Klassenkompass access view", async () => {
   assert.match(html, /property="og:image" content="http:\/\/localhost\/og\.png"/i);
   assert.match(html, /name="twitter:card" content="summary_large_image"/i);
   assert.match(html, /Klassenkompass/);
-  assert.match(html, /Klassenbereich öffnen/);
+  assert.match(html, /Schülerzugang öffnen/);
+  assert.match(html, />Admin</);
   assert.match(html, /type="password"/i);
-  assert.match(html, /erst nach einer erfolgreichen Prüfung/i);
+  assert.doesNotMatch(html, /id="actor-name"/i);
+  assert.match(html, /keinen Namen und keine E-Mail-Adresse/i);
   assert.doesNotMatch(html, /Schüleransicht öffnen|Lehreransicht öffnen/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
@@ -90,9 +92,13 @@ test("uses a server API and D1 for durable shared calendar events", async () => 
   assert.doesNotMatch(css, /@keyframes/);
 
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
-  assert.match(eventRoute, /role !== "teacher"/);
-  assert.match(eventRoute, /insert\(calendarEvents\)/);
+  assert.match(eventRoute, /identity\?\.role !== "teacher"/);
+  assert.match(eventRoute, /INSERT INTO calendar_events/);
+  assert.match(eventRoute, /calendar_event_audit_logs/);
   assert.match(schema, /calendar_events/);
+  assert.match(schema, /calendar_event_audit_logs/);
+  assert.match(schema, /access_session_actors/);
+  assert.match(schema, /admin_login_challenges/);
   assert.match(schema, /access_sessions/);
   assert.match(schema, /access_rate_limits/);
   assert.match(migration, /CREATE TABLE `calendar_events`/);

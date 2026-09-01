@@ -1,29 +1,51 @@
-import { asc, eq } from "drizzle-orm";
+import { env } from "cloudflare:workers";
+import { asc } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { calendarEvents } from "../../../db/schema";
 import { jsonResponse, optionsResponse } from "../../../lib/api-response";
-import { parseNewCalendarEvent } from "../../../lib/calendar-events";
-import { getAccessRole } from "../../../lib/server-auth";
-
-function toResponseEvent(row: typeof calendarEvents.$inferSelect) {
-  return {
-    id: row.id,
-    type: row.type,
-    category: row.category,
-    title: row.title,
-    startDate: row.startDate,
-    ...(row.endDate ? { endDate: row.endDate } : {}),
-    ...(row.time ? { time: row.time } : {}),
-    audience: row.audience,
-    ...(row.location ? { location: row.location } : {}),
-    ...(row.description ? { description: row.description } : {}),
-  };
-}
+import {
+  parseNewCalendarEvent,
+  type CalendarEvent,
+} from "../../../lib/calendar-events";
+import {
+  calendarEventSnapshotSql,
+  toCalendarEvent,
+} from "../../../lib/server-calendar-audit";
+import {
+  getAccessIdentity,
+  getAccessRole,
+} from "../../../lib/server-auth";
 
 function eventIdFromPayload(value: unknown) {
   if (!value || typeof value !== "object") return "";
   const id = (value as Record<string, unknown>).id;
   return typeof id === "string" ? id.trim() : "";
+}
+
+async function getAdminActor(request: Request) {
+  const identity = await getAccessIdentity(request);
+  if (identity?.role !== "teacher") {
+    return {
+      response: jsonResponse(
+        request,
+        { error: "Nur der Admin-Zugang darf Termine verändern." },
+        { status: identity ? 403 : 401 },
+      ),
+    };
+  }
+  if (!identity.actorEmail) {
+    return {
+      response: jsonResponse(
+        request,
+        {
+          error:
+            "Bitte melden Sie sich erneut über die verifizierte Admin-E-Mail an.",
+        },
+        { status: 401 },
+      ),
+    };
+  }
+  return { actorEmail: identity.actorEmail };
 }
 
 export function OPTIONS(request: Request) {
@@ -42,7 +64,7 @@ export async function GET(request: Request) {
       .from(calendarEvents)
       .orderBy(asc(calendarEvents.startDate), asc(calendarEvents.title));
 
-    return jsonResponse(request, { events: rows.map(toResponseEvent) });
+    return jsonResponse(request, { events: rows.map(toCalendarEvent) });
   } catch (error) {
     return jsonResponse(
       request,
@@ -59,31 +81,50 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const role = await getAccessRole(request);
-    if (role !== "teacher") {
-      return jsonResponse(
-        request,
-        { error: "Nur der Admin-Zugang darf Termine hinzufügen." },
-        { status: role ? 403 : 401 },
-      );
-    }
+    const admin = await getAdminActor(request);
+    if ("response" in admin) return admin.response;
 
     const parsed = parseNewCalendarEvent(await request.json());
     if ("error" in parsed) {
       return jsonResponse(request, { error: parsed.error }, { status: 400 });
     }
 
-    const event = { id: crypto.randomUUID(), ...parsed.event };
-    const [savedEvent] = await getDb()
-      .insert(calendarEvents)
-      .values(event)
-      .returning();
+    const event: CalendarEvent = { id: crypto.randomUUID(), ...parsed.event };
+    const auditId = crypto.randomUUID();
+    const changedAt = new Date().toISOString();
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO calendar_events (
+          id, type, category, title, start_date, end_date, time,
+          audience, location, description
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        event.id,
+        event.type,
+        event.category,
+        event.title,
+        event.startDate,
+        event.endDate ?? null,
+        event.time ?? null,
+        event.audience,
+        event.location ?? null,
+        event.description ?? null,
+      ),
+      env.DB.prepare(`
+        INSERT INTO calendar_event_audit_logs (
+          id, event_id, action, actor_name, actor_role, changed_at,
+          before_state, after_state, restored_from_log_id
+        ) VALUES (?, ?, 'create', ?, 'teacher', ?, NULL, ?, NULL)
+      `).bind(
+        auditId,
+        event.id,
+        admin.actorEmail,
+        changedAt,
+        JSON.stringify(event),
+      ),
+    ]);
 
-    return jsonResponse(
-      request,
-      { event: toResponseEvent(savedEvent) },
-      { status: 201 },
-    );
+    return jsonResponse(request, { event }, { status: 201 });
   } catch (error) {
     return jsonResponse(
       request,
@@ -100,14 +141,8 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const role = await getAccessRole(request);
-    if (role !== "teacher") {
-      return jsonResponse(
-        request,
-        { error: "Nur der Admin-Zugang darf Termine bearbeiten." },
-        { status: role ? 403 : 401 },
-      );
-    }
+    const admin = await getAdminActor(request);
+    if ("response" in admin) return admin.response;
 
     const payload: unknown = await request.json();
     const id = eventIdFromPayload(payload);
@@ -120,23 +155,50 @@ export async function PUT(request: Request) {
       return jsonResponse(request, { error: parsed.error }, { status: 400 });
     }
 
-    const [savedEvent] = await getDb()
-      .update(calendarEvents)
-      .set({
-        ...parsed.event,
-        endDate: parsed.event.endDate ?? null,
-        time: parsed.event.time ?? null,
-        location: parsed.event.location ?? null,
-        description: parsed.event.description ?? null,
-      })
-      .where(eq(calendarEvents.id, id))
-      .returning();
+    const event: CalendarEvent = { id, ...parsed.event };
+    const auditId = crypto.randomUUID();
+    const changedAt = new Date().toISOString();
+    const results = await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO calendar_event_audit_logs (
+          id, event_id, action, actor_name, actor_role, changed_at,
+          before_state, after_state, restored_from_log_id
+        )
+        SELECT ?, calendar_events.id, 'update', ?, 'teacher', ?,
+          ${calendarEventSnapshotSql}, ?, NULL
+        FROM calendar_events
+        WHERE calendar_events.id = ?
+      `).bind(
+        auditId,
+        admin.actorEmail,
+        changedAt,
+        JSON.stringify(event),
+        id,
+      ),
+      env.DB.prepare(`
+        UPDATE calendar_events
+        SET type = ?, category = ?, title = ?, start_date = ?, end_date = ?,
+          time = ?, audience = ?, location = ?, description = ?
+        WHERE id = ?
+      `).bind(
+        event.type,
+        event.category,
+        event.title,
+        event.startDate,
+        event.endDate ?? null,
+        event.time ?? null,
+        event.audience,
+        event.location ?? null,
+        event.description ?? null,
+        id,
+      ),
+    ]);
 
-    if (!savedEvent) {
+    if ((results[0].meta.changes ?? 0) === 0) {
       return jsonResponse(request, { error: "Der Termin wurde nicht gefunden." }, { status: 404 });
     }
 
-    return jsonResponse(request, { event: toResponseEvent(savedEvent) });
+    return jsonResponse(request, { event });
   } catch (error) {
     return jsonResponse(
       request,
@@ -153,14 +215,8 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const role = await getAccessRole(request);
-    if (role !== "teacher") {
-      return jsonResponse(
-        request,
-        { error: "Nur der Admin-Zugang darf Termine löschen." },
-        { status: role ? 403 : 401 },
-      );
-    }
+    const admin = await getAdminActor(request);
+    if ("response" in admin) return admin.response;
 
     const payload: unknown = await request.json();
     const id = eventIdFromPayload(payload);
@@ -168,16 +224,27 @@ export async function DELETE(request: Request) {
       return jsonResponse(request, { error: "Der Termin ist nicht gültig." }, { status: 400 });
     }
 
-    const [deletedEvent] = await getDb()
-      .delete(calendarEvents)
-      .where(eq(calendarEvents.id, id))
-      .returning({ id: calendarEvents.id });
+    const auditId = crypto.randomUUID();
+    const changedAt = new Date().toISOString();
+    const results = await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO calendar_event_audit_logs (
+          id, event_id, action, actor_name, actor_role, changed_at,
+          before_state, after_state, restored_from_log_id
+        )
+        SELECT ?, calendar_events.id, 'delete', ?, 'teacher', ?,
+          ${calendarEventSnapshotSql}, NULL, NULL
+        FROM calendar_events
+        WHERE calendar_events.id = ?
+      `).bind(auditId, admin.actorEmail, changedAt, id),
+      env.DB.prepare("DELETE FROM calendar_events WHERE id = ?").bind(id),
+    ]);
 
-    if (!deletedEvent) {
+    if ((results[0].meta.changes ?? 0) === 0) {
       return jsonResponse(request, { error: "Der Termin wurde nicht gefunden." }, { status: 404 });
     }
 
-    return jsonResponse(request, { id: deletedEvent.id });
+    return jsonResponse(request, { id });
   } catch (error) {
     return jsonResponse(
       request,

@@ -1,8 +1,8 @@
 # Klassenkompass
 
 Servergestützte Testversion für eine ruhige Jahresübersicht einer achten Klasse.
-Lehrkräfte pflegen langfristige Termine, die anschließend für alle Geräte in
-der Schüleransicht verfügbar sind.
+Die Schüleransicht bündelt Stundenplan und langfristige Termine; Lehrkräfte
+pflegen die Termine zentral für alle Geräte.
 
 ## Lokal starten
 
@@ -35,11 +35,15 @@ Versionen gleich.
 
 ## Umfang dieses Prototyps
 
-- Zugang, Schüler- und Lehreransicht
-- getrennte, serverseitig geprüfte Zugangscodes für Schüler und Lehrkräfte
+- Zugang, Schüler- und Admin-Ansicht
+- Klassencode für Schüler sowie passwortloser Admin-Zugang per E-Mail-Einmalcode
+- Admin-Freigabe ausschließlich für hinterlegte E-Mail-Adressen
 - Schutz vor automatisiertem Ausprobieren und zeitlich begrenzte Sitzungen
 - dynamisches Formular für Zeiträume und einzelne Termine
-- Bearbeiten und bestätigtes Löschen bestehender Termine in der Lehreransicht
+- schreibgeschützter Stundenplan-Modus mit Unterrichtszeiten, Pausen und Gruppenfächern
+- Bearbeiten und bestätigtes Löschen bestehender Termine in der Admin-Ansicht
+- Admin-Änderungsprotokoll mit verifizierter E-Mail, Datum/Uhrzeit, vollständigem
+  Vorher-/Nachher-Stand und protokollierter Wiederherstellung
 - einfache Pflichtfeld- und Datumsprüfung
 - responsive Darstellung für Handy, Tablet und Desktop
 - gemeinsame, dauerhafte Speicherung in einer Server-Datenbank
@@ -47,8 +51,17 @@ Versionen gleich.
   aus dem Epochenplan 2026/2027
 
 Termine werden über eine Server-API gespeichert und bei jedem Öffnen der
-Schüler- oder Lehreransicht neu geladen. Sie bleiben daher nach einem Neuladen,
-auf anderen Geräten und in anderen WLANs erhalten. Die produktiven Codes liegen
-ausschließlich als geschützte Servereinstellungen vor und werden weder in die
-Browser-App noch in das öffentliche Repository eingebaut. Ohne gültige Sitzung
-liefert die Termin-API keine Daten aus.
+Schüler- oder Admin-Ansicht neu geladen. Sie bleiben daher nach einem Neuladen,
+auf anderen Geräten und in anderen WLANs erhalten. Der produktive Schülercode
+sowie die Admin-E-Mail-Konfiguration liegen ausschließlich als geschützte
+Servereinstellungen vor und werden weder in die Browser-App noch in das
+öffentliche Repository eingebaut. Ohne gültige Sitzung liefert die Termin-API
+keine Daten aus.
+
+Schüler geben weder Namen noch E-Mail-Adresse an. Für die Admin-Ansicht wird ein
+sechsstelliger, zehn Minuten gültiger Einmalcode an eine serverseitig
+freigeschaltete E-Mail-Adresse gesendet. Der Code ist nur einmal verwendbar; die
+verifizierte Adresse wird automatisch mit jeder Terminänderung gespeichert.
+Dadurch kann niemand seine Identität durch einen frei eingegebenen Namen
+vortäuschen. Einen gemeinsam genutzten Admin-Code oder ein Admin-Passwort gibt es
+nicht.

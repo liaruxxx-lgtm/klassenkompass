@@ -19,6 +19,10 @@ test("provides a dedicated portrait-phone navigation and safe viewport", async (
   assert.match(layout, /themeColor:\s*"#f7f5ef"/i);
 
   assert.match(app, /className="mobile-tabbar"/);
+  assert.match(app, /className="student-mode-switcher"/);
+  assert.match(app, /id="student-mode-timetable"/);
+  assert.match(app, /className="timetable-mobile-list"/);
+  assert.match(app, /className="timetable-table"/);
   assert.match(app, /section: "ueberblick"/);
   assert.match(app, /section: "termine"/);
   assert.match(app, /section: "jahresblick"/);
@@ -30,6 +34,8 @@ test("provides a dedicated portrait-phone navigation and safe viewport", async (
   assert.match(app, /enterKeyHint="go"/);
 
   assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.mobile-tabbar\s*\{[\s\S]*position:\s*fixed/);
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.timetable-day-tabs\s*\{[\s\S]*display:\s*grid/);
+  assert.match(css, /\.timetable-table-wrap\s*\{[\s\S]*overflow-x:\s*auto/);
   assert.match(css, /\.mobile-tabbar button\.active\s*\{/);
   assert.doesNotMatch(css, /\.mobile-tabbar a:first-child/);
   assert.match(css, /min-height:\s*50px/);

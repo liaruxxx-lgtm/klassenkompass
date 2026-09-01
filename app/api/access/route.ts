@@ -1,6 +1,6 @@
 import {
   AccessRateLimitError,
-  createAccessSession,
+  createStudentAccessSession,
   revokeAccessSession,
 } from "../../../lib/server-auth";
 import { jsonResponse, optionsResponse } from "../../../lib/api-response";
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const session = await createAccessSession(request, code);
+    const session = await createStudentAccessSession(request, code);
     if (!session) {
       return jsonResponse(
         request,

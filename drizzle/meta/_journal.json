@@ -22,6 +22,20 @@
       "when": 1787078533940,
       "tag": "0002_daily_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787644170542,
+      "tag": "0003_lazy_masque",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1787666182407,
+      "tag": "0004_heavy_young_avengers",
+      "breakpoints": true
     }
   ]
 }

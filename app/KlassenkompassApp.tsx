@@ -3,6 +3,7 @@
 import {
   ArrowLeft,
   ArrowRight,
+  BadgeCheck,
   Bell,
   BookOpen,
   Calendar,
@@ -17,9 +18,11 @@ import {
   Eye,
   EyeOff,
   Flag,
+  History,
   Leaf,
   ListFilter,
   LockKeyhole,
+  Mail,
   MapPin,
   Pencil,
   Plus,
@@ -31,6 +34,8 @@ import {
   X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import AuditLogView from "./AuditLogView";
+import type { CalendarEventAuditLog } from "../lib/audit-logs";
 import {
   categories,
   type Audience,
@@ -39,9 +44,16 @@ import {
   type EventType,
   type NewCalendarEvent,
 } from "../lib/calendar-events";
+import {
+  getTimetableEntries,
+  timetableDays,
+  timetableRows,
+  type TimetableDayKey,
+} from "../lib/timetable";
 
 type AppView = "access" | "student" | "teacher";
 type StudentSection = "ueberblick" | "termine" | "jahresblick";
+type StudentMode = "year" | "timetable";
 
 const categoryClass: Record<Category, string> = {
   Epochen: "epoch",
@@ -137,17 +149,50 @@ function PrototypeTag() {
 }
 
 function AccessView({
-  onAuthenticate,
+  onStudentAuthenticate,
+  onRequestAdminCode,
+  onVerifyAdminCode,
 }: {
-  onAuthenticate: (code: string) => Promise<void>;
+  onStudentAuthenticate: (code: string) => Promise<void>;
+  onRequestAdminCode: (
+    email: string,
+  ) => Promise<{ challengeId: string; message: string }>;
+  onVerifyAdminCode: (
+    email: string,
+    challengeId: string,
+    code: string,
+  ) => Promise<void>;
 }) {
+  const [accessMode, setAccessMode] = useState<"student" | "admin">("student");
   const [accessCode, setAccessCode] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminChallengeId, setAdminChallengeId] = useState("");
+  const [adminVerificationCode, setAdminVerificationCode] = useState("");
+  const [adminMessage, setAdminMessage] = useState("");
   const [accessError, setAccessError] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const [isAccessCodeVisible, setIsAccessCodeVisible] = useState(false);
   const accessCodeRef = useRef<HTMLInputElement>(null);
+  const adminEmailRef = useRef<HTMLInputElement>(null);
+  const adminVerificationCodeRef = useRef<HTMLInputElement>(null);
 
-  async function handleAccessSubmit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (accessMode === "admin" && adminChallengeId) {
+      adminVerificationCodeRef.current?.focus();
+    }
+  }, [accessMode, adminChallengeId]);
+
+  function switchAccessMode(mode: "student" | "admin") {
+    setAccessMode(mode);
+    setAccessError("");
+    setAdminMessage("");
+    requestAnimationFrame(() => {
+      if (mode === "student") accessCodeRef.current?.focus();
+      else adminEmailRef.current?.focus();
+    });
+  }
+
+  async function handleStudentSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedCode = accessCode.trim().toUpperCase();
     if (!normalizedCode) {
@@ -159,7 +204,7 @@ function AccessView({
     setIsChecking(true);
     setAccessError("");
     try {
-      await onAuthenticate(normalizedCode);
+      await onStudentAuthenticate(normalizedCode);
     } catch (error) {
       setAccessError(
         error instanceof Error
@@ -167,6 +212,64 @@ function AccessView({
           : "Der Zugang konnte nicht geöffnet werden.",
       );
       accessCodeRef.current?.focus();
+    } finally {
+      setIsChecking(false);
+    }
+  }
+
+  async function handleAdminEmailSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalizedEmail = adminEmail.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setAccessError("Bitte geben Sie Ihre freigegebene E-Mail-Adresse ein.");
+      adminEmailRef.current?.focus();
+      return;
+    }
+
+    setIsChecking(true);
+    setAccessError("");
+    setAdminMessage("");
+    try {
+      const result = await onRequestAdminCode(normalizedEmail);
+      setAdminEmail(normalizedEmail);
+      setAdminChallengeId(result.challengeId);
+      setAdminVerificationCode("");
+      setAdminMessage(result.message);
+    } catch (error) {
+      setAccessError(
+        error instanceof Error
+          ? error.message
+          : "Der Einmalcode konnte nicht angefordert werden.",
+      );
+      adminEmailRef.current?.focus();
+    } finally {
+      setIsChecking(false);
+    }
+  }
+
+  async function handleAdminCodeSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!/^\d{6}$/.test(adminVerificationCode)) {
+      setAccessError("Bitte geben Sie den sechsstelligen Einmalcode ein.");
+      adminVerificationCodeRef.current?.focus();
+      return;
+    }
+
+    setIsChecking(true);
+    setAccessError("");
+    try {
+      await onVerifyAdminCode(
+        adminEmail,
+        adminChallengeId,
+        adminVerificationCode,
+      );
+    } catch (error) {
+      setAccessError(
+        error instanceof Error
+          ? error.message
+          : "Der Admin-Zugang konnte nicht geöffnet werden.",
+      );
+      adminVerificationCodeRef.current?.focus();
     } finally {
       setIsChecking(false);
     }
@@ -184,8 +287,8 @@ function AccessView({
           <span className="eyebrow">Orientierung für die achte Klasse</span>
           <h1>Das Wichtige im Blick. Der Kopf bleibt frei.</h1>
           <p className="access-lead">
-            Klassenkompass bündelt Epochen, Projekte, Proben und große Termine an
-            einem ruhigen Ort – ohne täglichen Pflegeaufwand.
+            Klassenkompass bündelt Epochen, Projekte, den aktuellen Stundenplan
+            und große Termine an einem ruhigen Ort – ohne täglichen Pflegeaufwand.
           </p>
 
           <div className="principle-strip" aria-label="Produktprinzipien">
@@ -195,7 +298,7 @@ function AccessView({
               </span>
               <span>
                 <strong>Jahresrahmen</strong>
-                <small>statt Tagesplan</small>
+                <small>und Stundenplan</small>
               </span>
             </div>
             <div className="principle-divider" aria-hidden="true" />
@@ -218,85 +321,276 @@ function AccessView({
             </span>
             <div>
               <p className="overline">Klassenbereich</p>
-              <h2 id="access-title">Zugang öffnen</h2>
+              <h2 id="access-title">
+                {accessMode === "student"
+                  ? "Schülerzugang öffnen"
+                  : "Admin sicher anmelden"}
+              </h2>
             </div>
           </div>
 
-          <form className="access-form" onSubmit={handleAccessSubmit} noValidate>
-            <label className="field-label" htmlFor="access-code">
-              Zugangscode
-            </label>
-            <div className="code-field-wrap">
+          <div
+            className="access-mode-tabs"
+            role="tablist"
+            aria-label="Zugangsart wählen"
+          >
+            <button
+              id="student-access-tab"
+              className={accessMode === "student" ? "active" : ""}
+              type="button"
+              role="tab"
+              aria-selected={accessMode === "student"}
+              aria-controls="student-access-panel"
+              onClick={() => switchAccessMode("student")}
+            >
+              <Users size={16} aria-hidden="true" />
+              Schüler
+            </button>
+            <button
+              id="admin-access-tab"
+              className={accessMode === "admin" ? "active" : ""}
+              type="button"
+              role="tab"
+              aria-selected={accessMode === "admin"}
+              aria-controls="admin-access-panel"
+              onClick={() => switchAccessMode("admin")}
+            >
+              <Mail size={16} aria-hidden="true" />
+              Admin
+            </button>
+          </div>
+
+          {accessMode === "student" ? (
+            <form
+              id="student-access-panel"
+              className="access-form"
+              role="tabpanel"
+              aria-labelledby="student-access-tab"
+              onSubmit={handleStudentSubmit}
+              noValidate
+            >
+              <label className="field-label" htmlFor="access-code">
+                Klassencode
+              </label>
+              <div className="code-field-wrap">
+                <input
+                  ref={accessCodeRef}
+                  id="access-code"
+                  className={`text-input code-input ${accessError ? "input-error" : ""}`}
+                  type={isAccessCodeVisible ? "text" : "password"}
+                  inputMode="text"
+                  enterKeyHint="go"
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={128}
+                  value={accessCode}
+                  onChange={(event) => {
+                    setAccessCode(event.target.value.toUpperCase());
+                    if (accessError) setAccessError("");
+                  }}
+                  placeholder="Klassencode eingeben"
+                  aria-invalid={Boolean(accessError)}
+                  aria-describedby={
+                    accessError ? "student-code-hint access-error" : "student-code-hint"
+                  }
+                />
+                <button
+                  className="code-visibility-toggle"
+                  type="button"
+                  onClick={() => setIsAccessCodeVisible((isVisible) => !isVisible)}
+                  aria-label={
+                    isAccessCodeVisible
+                      ? "Klassencode verbergen"
+                      : "Klassencode anzeigen"
+                  }
+                  aria-pressed={isAccessCodeVisible}
+                  title={
+                    isAccessCodeVisible
+                      ? "Klassencode verbergen"
+                      : "Klassencode anzeigen"
+                  }
+                >
+                  {isAccessCodeVisible ? (
+                    <EyeOff size={18} aria-hidden="true" />
+                  ) : (
+                    <Eye size={18} aria-hidden="true" />
+                  )}
+                </button>
+                <span className="code-field-status">Serverprüfung</span>
+              </div>
+              <p className="field-hint" id="student-code-hint">
+                Schüler benötigen nur den gemeinsamen Klassencode – keinen Namen
+                und keine E-Mail-Adresse.
+              </p>
+
+              {accessError && (
+                <p className="error-text access-code-error" id="access-error" role="alert">
+                  {accessError}
+                </p>
+              )}
+
+              <div className="access-actions">
+                <button
+                  className="button button-primary button-wide"
+                  type="submit"
+                  disabled={isChecking}
+                >
+                  {isChecking ? "Zugang wird geprüft …" : "Schülerbereich öffnen"}
+                  <ArrowRight size={18} aria-hidden="true" />
+                </button>
+              </div>
+            </form>
+          ) : adminChallengeId ? (
+            <form
+              id="admin-access-panel"
+              className="access-form admin-code-form"
+              role="tabpanel"
+              aria-labelledby="admin-access-tab"
+              onSubmit={handleAdminCodeSubmit}
+              noValidate
+            >
+              <div className="admin-email-confirmation" role="status">
+                <BadgeCheck size={18} aria-hidden="true" />
+                <span>
+                  Code angefordert für <strong>{adminEmail}</strong>
+                </span>
+              </div>
+              {adminMessage && <p className="field-hint">{adminMessage}</p>}
+              <label className="field-label" htmlFor="admin-verification-code">
+                Sechsstelliger Einmalcode
+              </label>
               <input
-                ref={accessCodeRef}
-                id="access-code"
-                className={`text-input code-input ${accessError ? "input-error" : ""}`}
-                type={isAccessCodeVisible ? "text" : "password"}
-                inputMode="text"
+                ref={adminVerificationCodeRef}
+                id="admin-verification-code"
+                className={`text-input admin-verification-input ${accessError ? "input-error" : ""}`}
+                type="text"
+                inputMode="numeric"
                 enterKeyHint="go"
-                autoCapitalize="characters"
-                autoComplete="off"
+                autoComplete="one-time-code"
                 spellCheck={false}
-                maxLength={128}
-                value={accessCode}
+                maxLength={6}
+                value={adminVerificationCode}
                 onChange={(event) => {
-                  setAccessCode(event.target.value.toUpperCase());
+                  setAdminVerificationCode(
+                    event.target.value.replace(/\D/g, "").slice(0, 6),
+                  );
                   if (accessError) setAccessError("");
                 }}
-                placeholder="Code eingeben"
+                placeholder="000000"
                 aria-invalid={Boolean(accessError)}
-                aria-describedby={accessError ? "code-hint code-error" : "code-hint"}
+                aria-describedby={accessError ? "admin-code-hint access-error" : "admin-code-hint"}
               />
-              <button
-                className="code-visibility-toggle"
-                type="button"
-                onClick={() => setIsAccessCodeVisible((isVisible) => !isVisible)}
-                aria-label={
-                  isAccessCodeVisible
-                    ? "Zugangscode verbergen"
-                    : "Zugangscode anzeigen"
-                }
-                aria-pressed={isAccessCodeVisible}
-                title={
-                  isAccessCodeVisible
-                    ? "Zugangscode verbergen"
-                    : "Zugangscode anzeigen"
-                }
-              >
-                {isAccessCodeVisible ? (
-                  <EyeOff size={18} aria-hidden="true" />
-                ) : (
-                  <Eye size={18} aria-hidden="true" />
-                )}
-              </button>
-              <span className="code-field-status">Serverprüfung</span>
-            </div>
-            <p className="field-hint" id="code-hint">
-              Erst nach erfolgreicher Serverprüfung werden die Termine geladen.
-            </p>
-            {accessError && (
-              <p className="error-text access-code-error" id="code-error" role="alert">
-                {accessError}
+              <p className="field-hint" id="admin-code-hint">
+                Der Code ist zehn Minuten gültig und kann nur einmal verwendet
+                werden.
               </p>
-            )}
 
-            <div className="access-actions">
-              <button
-                className="button button-primary button-wide"
-                type="submit"
-                disabled={isChecking}
-              >
-                {isChecking ? "Zugang wird geprüft …" : "Klassenbereich öffnen"}
-                <ArrowRight size={18} aria-hidden="true" />
-              </button>
-            </div>
-          </form>
+              {accessError && (
+                <p className="error-text access-code-error" id="access-error" role="alert">
+                  {accessError}
+                </p>
+              )}
+
+              <div className="access-actions admin-code-actions">
+                <button
+                  className="button button-ghost"
+                  type="button"
+                  disabled={isChecking}
+                  onClick={() => {
+                    setAdminChallengeId("");
+                    setAdminVerificationCode("");
+                    setAdminMessage("");
+                    setAccessError("");
+                    requestAnimationFrame(() => adminEmailRef.current?.focus());
+                  }}
+                >
+                  Andere Adresse
+                </button>
+                <button
+                  className="button button-primary"
+                  type="submit"
+                  disabled={isChecking}
+                >
+                  {isChecking ? "Code wird geprüft …" : "Admin-Ansicht öffnen"}
+                  <ArrowRight size={18} aria-hidden="true" />
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form
+              id="admin-access-panel"
+              className="access-form"
+              role="tabpanel"
+              aria-labelledby="admin-access-tab"
+              onSubmit={handleAdminEmailSubmit}
+              noValidate
+            >
+              <label className="field-label" htmlFor="admin-email">
+                Freigegebene Admin-E-Mail-Adresse
+              </label>
+              <div className="admin-email-field-wrap">
+                <Mail size={18} aria-hidden="true" />
+                <input
+                  ref={adminEmailRef}
+                  id="admin-email"
+                  className={`text-input ${accessError ? "input-error" : ""}`}
+                  type="email"
+                  inputMode="email"
+                  enterKeyHint="send"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  spellCheck={false}
+                  maxLength={254}
+                  value={adminEmail}
+                  onChange={(event) => {
+                    setAdminEmail(event.target.value);
+                    if (accessError) setAccessError("");
+                  }}
+                  placeholder="name@schule.de"
+                  aria-invalid={Boolean(accessError)}
+                  aria-describedby={accessError ? "admin-email-hint access-error" : "admin-email-hint"}
+                />
+              </div>
+              <p className="field-hint" id="admin-email-hint">
+                Es werden nur vorher freigegebene Adressen zugelassen. Der
+                verifizierte Admin wird automatisch über diese Adresse im
+                Protokoll ausgewiesen.
+              </p>
+
+              {accessError && (
+                <p className="error-text access-code-error" id="access-error" role="alert">
+                  {accessError}
+                </p>
+              )}
+
+              <div className="access-actions">
+                <button
+                  className="button button-primary button-wide"
+                  type="submit"
+                  disabled={isChecking}
+                >
+                  {isChecking ? "Einmalcode wird gesendet …" : "Einmalcode senden"}
+                  <Mail size={18} aria-hidden="true" />
+                </button>
+              </div>
+            </form>
+          )}
 
           <div className="prototype-warning" role="note">
             <ShieldAlert size={18} aria-hidden="true" />
             <p>
-              <strong>Geschützter Zugang:</strong> Termine werden erst nach einer
-              erfolgreichen Prüfung vom Server ausgeliefert.
+              {accessMode === "student" ? (
+                <>
+                  <strong>Einfacher Schülerzugang:</strong> Der Klassencode reicht
+                  zum Lesen der Termine und des Stundenplans.
+                </>
+              ) : (
+                <>
+                  <strong>Verifizierter Admin-Zugang:</strong> Kein frei
+                  eingegebener Name und kein gemeinsames Admin-Passwort.
+                </>
+              )}
             </p>
           </div>
         </section>
@@ -305,7 +599,7 @@ function AccessView({
       <footer className="access-footer">
         <span>Langfristige Termine</span>
         <span aria-hidden="true">•</span>
-        <span>Kein Stundenplan</span>
+        <span>Stundenplan inklusive</span>
         <span aria-hidden="true">•</span>
         <span>Ruhig und übersichtlich</span>
       </footer>
@@ -320,8 +614,8 @@ function AppHeader({
   view: Exclude<AppView, "access">;
   onAccess: () => void;
 }) {
-  const roleLabel = view === "student" ? "Schüleransicht" : "Lehreransicht";
-  const shortRoleLabel = view === "student" ? "Schüler" : "Lehrkraft";
+  const roleLabel = view === "student" ? "Schüleransicht" : "Admin-Ansicht";
+  const shortRoleLabel = view === "student" ? "Schüler" : "Admin";
 
   return (
     <header className="app-header">
@@ -974,6 +1268,243 @@ function MobileStudentNav({
   );
 }
 
+function StudentModeSwitcher({
+  mode,
+  onChange,
+}: {
+  mode: StudentMode;
+  onChange: (mode: StudentMode) => void;
+}) {
+  return (
+    <div className="student-mode-switcher" role="tablist" aria-label="Schülerbereich wählen">
+      <button
+        id="student-mode-year"
+        className={mode === "year" ? "active" : ""}
+        type="button"
+        role="tab"
+        aria-selected={mode === "year"}
+        aria-controls="student-year-panel"
+        onClick={() => onChange("year")}
+      >
+        <CalendarDays size={17} aria-hidden="true" />
+        Klassenjahr
+      </button>
+      <button
+        id="student-mode-timetable"
+        className={mode === "timetable" ? "active" : ""}
+        type="button"
+        role="tab"
+        aria-selected={mode === "timetable"}
+        aria-controls="student-timetable-panel"
+        onClick={() => onChange("timetable")}
+      >
+        <Clock3 size={17} aria-hidden="true" />
+        Stundenplan
+      </button>
+    </div>
+  );
+}
+
+function TimetableLessonCell({
+  dayKey,
+  lessonNumber,
+}: {
+  dayKey: TimetableDayKey;
+  lessonNumber: number;
+}) {
+  const entries = getTimetableEntries(dayKey, lessonNumber);
+
+  return (
+    <div className={`timetable-lesson-card ${entries.length > 1 ? "is-split" : ""}`}>
+      {entries.length === 0 ? (
+        <span className="timetable-empty-lesson">Frei</span>
+      ) : (
+        entries.map((entry, index) => (
+          <div
+            className={`timetable-entry timetable-tone-${entry.tone}`}
+            key={`${entry.group ?? "class"}-${entry.name}-${index}`}
+          >
+            <div className="timetable-entry-heading">
+              <span className="timetable-entry-dot" aria-hidden="true" />
+              <strong>{entry.name}</strong>
+            </div>
+            {entry.group && <span className="timetable-group">{entry.group}</span>}
+            {entry.teacher && <small>{entry.teacher}</small>}
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function TimetableView() {
+  const currentWeekday = new Date().getDay();
+  const todayDayKey =
+    currentWeekday >= 1 && currentWeekday <= 5
+      ? timetableDays[currentWeekday - 1].key
+      : undefined;
+  const [selectedDay, setSelectedDay] = useState<TimetableDayKey>(todayDayKey ?? "mon");
+  const selectedDayDetails = timetableDays.find((day) => day.key === selectedDay) ?? timetableDays[0];
+  const selectedDayEnd = selectedDay === "tue" || selectedDay === "thu" ? "15:35" : "13:20";
+
+  return (
+    <section
+      id="student-timetable-panel"
+      className="timetable-view"
+      role="tabpanel"
+      aria-labelledby="student-mode-timetable"
+    >
+      <div className="timetable-heading">
+        <div>
+          <span className="eyebrow">Stundenplan-Modus</span>
+          <h1 id="timetable-title">Dein Stundenplan.</h1>
+          <p>
+            Alle Unterrichtszeiten von Montag bis Freitag auf einen Blick.
+            Gruppenfächer sind direkt in der jeweiligen Stunde aufgeteilt.
+          </p>
+        </div>
+        <div className="timetable-summary" aria-label="Unterrichtszeiten">
+          <div className="timetable-summary-card">
+            <span>Schulbeginn</span>
+            <strong>08:00</strong>
+          </div>
+          <div className="timetable-summary-card">
+            <span>Mo / Mi / Fr</span>
+            <strong>bis 13:20</strong>
+          </div>
+          <div className="timetable-summary-card">
+            <span>Di / Do</span>
+            <strong>bis 15:35</strong>
+          </div>
+        </div>
+      </div>
+
+      <div className="timetable-day-tabs" role="tablist" aria-label="Wochentag wählen">
+        {timetableDays.map((day) => {
+          const isSelected = selectedDay === day.key;
+          const isToday = todayDayKey === day.key;
+          return (
+            <button
+              key={day.key}
+              id={`timetable-day-${day.key}`}
+              className={isSelected ? "active" : ""}
+              type="button"
+              role="tab"
+              aria-selected={isSelected}
+              aria-controls="timetable-mobile-day"
+              onClick={() => setSelectedDay(day.key)}
+            >
+              <span>{day.short}</span>
+              <strong>{day.label}</strong>
+              {isToday && <small>Heute</small>}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        id="timetable-mobile-day"
+        className="timetable-mobile-day"
+        role="tabpanel"
+        aria-labelledby={`timetable-day-${selectedDay}`}
+      >
+        <div className="timetable-mobile-heading">
+          <div>
+            <p className="overline">Tagesplan</p>
+            <h2>{selectedDayDetails.label}</h2>
+          </div>
+          <span>{selectedDayEnd} Uhr Schluss</span>
+        </div>
+        <ol className="timetable-mobile-list" aria-label={`Stundenplan für ${selectedDayDetails.label}`}>
+          {timetableRows.map((row) =>
+            row.type === "break" ? (
+              <li className="timetable-mobile-break" key={`${selectedDay}-break-${row.label}`}>
+                <span>{row.label}</span>
+                <strong>
+                  {row.start} – {row.end} · {row.duration} Min.
+                </strong>
+              </li>
+            ) : (
+              <li className="timetable-mobile-lesson" key={`${selectedDay}-lesson-${row.number}`}>
+                <div className="timetable-mobile-time">
+                  <strong>{row.number}</strong>
+                  <span>{row.label}</span>
+                  <small>
+                    {row.start} – {row.end}
+                  </small>
+                </div>
+                <TimetableLessonCell dayKey={selectedDay} lessonNumber={row.number} />
+              </li>
+            ),
+          )}
+        </ol>
+      </div>
+
+      <div className="timetable-table-wrap">
+        <table className="timetable-table">
+          <caption className="visually-hidden">
+            Stundenplan Montag bis Freitag mit Unterrichtszeiten und Pausen
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Zeit</th>
+              {timetableDays.map((day) => (
+                <th
+                  className={todayDayKey === day.key ? "is-today" : ""}
+                  scope="col"
+                  key={day.key}
+                >
+                  <span>{day.short}</span>
+                  <strong>{day.label}</strong>
+                  {todayDayKey === day.key && <small>Heute</small>}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {timetableRows.map((row) =>
+              row.type === "break" ? (
+                <tr className="timetable-break-row" key={`break-${row.label}`}>
+                  <th scope="row">
+                    <strong>{row.label}</strong>
+                    <span>
+                      {row.start} – {row.end}
+                    </span>
+                  </th>
+                  {timetableDays.map((day) => (
+                    <td key={`${day.key}-${row.label}`}>
+                      <span>{row.duration} Min. Pause</span>
+                    </td>
+                  ))}
+                </tr>
+              ) : (
+                <tr key={`lesson-${row.number}`}>
+                  <th scope="row">
+                    <strong>{row.label}</strong>
+                    <span>
+                      {row.start} – {row.end}
+                    </span>
+                  </th>
+                  {timetableDays.map((day) => (
+                    <td key={`${day.key}-${row.number}`}>
+                      <TimetableLessonCell dayKey={day.key} lessonNumber={row.number} />
+                    </td>
+                  ))}
+                </tr>
+              ),
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="timetable-note">
+        <Clock3 size={15} aria-hidden="true" />
+        Unterrichtszeiten und Fächer entsprechen dem aktuellen Klassenplan.
+      </p>
+    </section>
+  );
+}
+
 function EventDetails({
   event,
   onClose,
@@ -1090,6 +1621,7 @@ function StudentView({
   events: CalendarEvent[];
   onAccess: () => void;
 }) {
+  const [studentMode, setStudentMode] = useState<StudentMode>("year");
   const [activeSection, setActiveSection] = useState<StudentSection>("ueberblick");
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent>();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -1105,6 +1637,7 @@ function StudentView({
   const nextEvent = upcomingEvents.find((event) => event.id !== currentPeriod?.id);
 
   useEffect(() => {
+    if (studentMode !== "year") return;
     if (typeof document.getElementById !== "function") return;
     const sections = (["ueberblick", "termine", "jahresblick"] as const)
       .map((section) => ({ section, element: document.getElementById(section) }))
@@ -1132,7 +1665,15 @@ function StudentView({
       window.removeEventListener("scroll", updateActiveSection);
       window.removeEventListener("resize", updateActiveSection);
     };
-  }, []);
+  }, [studentMode]);
+
+  function changeStudentMode(mode: StudentMode) {
+    setStudentMode(mode);
+    setSelectedEvent(undefined);
+    setIsCalendarOpen(false);
+    setActiveSection("ueberblick");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   function navigateTo(section: StudentSection) {
     setActiveSection(section);
@@ -1143,38 +1684,47 @@ function StudentView({
   }
 
   return (
-    <div className="app-page student-page">
+    <div className={`app-page student-page ${studentMode === "timetable" ? "student-page-timetable" : ""}`}>
       <AppHeader view="student" onAccess={onAccess} />
       <main className="dashboard-shell">
-        <section className="dashboard-intro" id="ueberblick">
-          <div>
-            <span className="eyebrow">Schüleransicht</span>
-            <h1>Was im Klassenjahr wichtig ist.</h1>
+        <StudentModeSwitcher mode={studentMode} onChange={changeStudentMode} />
+        {studentMode === "timetable" ? (
+          <TimetableView />
+        ) : (
+          <div id="student-year-panel" role="tabpanel" aria-labelledby="student-mode-year">
+            <section className="dashboard-intro" id="ueberblick">
+              <div>
+                <span className="eyebrow">Schüleransicht</span>
+                <h1>Was im Klassenjahr wichtig ist.</h1>
+              </div>
+              <p>
+                Epochen, Projekte, wichtige Termine und dein aktueller Stundenplan
+                an einem ruhigen Ort.
+              </p>
+            </section>
+
+            <div className="feature-grid">
+              <CurrentPeriodCard event={currentPeriod} onSelect={setSelectedEvent} />
+              <NextEventCard event={nextEvent} onSelect={setSelectedEvent} />
+            </div>
+
+            <UpcomingEvents events={upcomingEvents} onSelect={setSelectedEvent} />
+
+            <div className="lower-dashboard-grid" id="jahresblick">
+              <Timeline
+                events={sortedEvents}
+                onSelect={setSelectedEvent}
+                onOpenCalendar={() => setIsCalendarOpen(true)}
+              />
+              <CategoryOverview events={events} />
+            </div>
           </div>
-          <p>
-            Epochen, Projekte und große Termine – ohne den Lärm eines täglichen
-            Stundenplans.
-          </p>
-        </section>
-
-        <div className="feature-grid">
-          <CurrentPeriodCard event={currentPeriod} onSelect={setSelectedEvent} />
-          <NextEventCard event={nextEvent} onSelect={setSelectedEvent} />
-        </div>
-
-        <UpcomingEvents events={upcomingEvents} onSelect={setSelectedEvent} />
-
-        <div className="lower-dashboard-grid" id="jahresblick">
-          <Timeline
-            events={sortedEvents}
-            onSelect={setSelectedEvent}
-            onOpenCalendar={() => setIsCalendarOpen(true)}
-          />
-          <CategoryOverview events={events} />
-        </div>
+        )}
       </main>
       <PrototypeFooter />
-      <MobileStudentNav activeSection={activeSection} onNavigate={navigateTo} />
+      {studentMode === "year" && (
+        <MobileStudentNav activeSection={activeSection} onNavigate={navigateTo} />
+      )}
       {isCalendarOpen && (
         <CalendarOverview
           events={sortedEvents}
@@ -1194,19 +1744,34 @@ function StudentView({
 
 function TeacherView({
   events,
+  actorEmail,
+  auditLogs,
+  auditHasMore,
+  isAuditLoading,
+  auditError,
   onAccess,
   onAddClick,
   onEdit,
   onDelete,
+  onRestore,
+  onLoadMoreAuditLogs,
   notice,
 }: {
   events: CalendarEvent[];
+  actorEmail: string;
+  auditLogs: CalendarEventAuditLog[];
+  auditHasMore: boolean;
+  isAuditLoading: boolean;
+  auditError: string;
   onAccess: () => void;
   onAddClick: () => void;
   onEdit: (event: CalendarEvent) => void;
   onDelete: (event: CalendarEvent) => Promise<void>;
+  onRestore: (log: CalendarEventAuditLog) => Promise<void>;
+  onLoadMoreAuditLogs: () => Promise<void>;
   notice: string;
 }) {
+  const [activePanel, setActivePanel] = useState<"events" | "audit">("events");
   const [filter, setFilter] = useState<"Alle" | Category>("Alle");
   const [deletingId, setDeletingId] = useState("");
   const [actionError, setActionError] = useState("");
@@ -1242,17 +1807,31 @@ function TeacherView({
       <main className="teacher-shell">
         <section className="teacher-hero">
           <div>
-            <span className="eyebrow">Lehreransicht</span>
+            <span className="eyebrow">Admin-Ansicht</span>
             <h1>Jahresrahmen verwalten</h1>
             <p>
               Pflegen Sie nur die Termine, die der Klasse langfristig Orientierung
               geben. Alles Weitere bleibt bewusst draußen.
             </p>
           </div>
-          <button className="button button-primary add-button" type="button" onClick={onAddClick}>
-            <Plus size={19} aria-hidden="true" />
-            Termin hinzufügen
-          </button>
+          <div className="teacher-hero-actions">
+            <button
+              className="button button-secondary audit-open-button"
+              type="button"
+              onClick={() => setActivePanel("audit")}
+            >
+              <History size={18} aria-hidden="true" />
+              Änderungsprotokoll
+            </button>
+            <button
+              className="button button-primary add-button"
+              type="button"
+              onClick={onAddClick}
+            >
+              <Plus size={19} aria-hidden="true" />
+              Termin hinzufügen
+            </button>
+          </div>
         </section>
 
         <div className="teacher-note" role="note">
@@ -1261,9 +1840,42 @@ function TeacherView({
           </span>
           <p>
             <strong>Wenig Pflege, viel Wirkung.</strong> Epochen, Meilensteine,
-            Abgaben, Proben und Aufführungen genügen – kein täglicher Stundenplan.
+            Abgaben, Proben und Aufführungen genügen – der Stundenplan liegt
+            separat in der Schüleransicht.
           </p>
-          <span className="session-note">Auf dem Server gespeichert</span>
+          <span className="session-note">
+            <BadgeCheck size={14} aria-hidden="true" />
+            Verifiziert: {actorEmail}
+          </span>
+        </div>
+
+        <div className="teacher-section-tabs" role="tablist" aria-label="Admin-Bereiche">
+          <button
+            id="events-tab"
+            className={activePanel === "events" ? "active" : ""}
+            type="button"
+            role="tab"
+            aria-selected={activePanel === "events"}
+            aria-controls="events-panel"
+            onClick={() => setActivePanel("events")}
+          >
+            <CalendarDays size={17} aria-hidden="true" />
+            Termine
+            <span>{events.length}</span>
+          </button>
+          <button
+            id="audit-tab"
+            className={activePanel === "audit" ? "active" : ""}
+            type="button"
+            role="tab"
+            aria-selected={activePanel === "audit"}
+            aria-controls="audit-panel"
+            onClick={() => setActivePanel("audit")}
+          >
+            <History size={17} aria-hidden="true" />
+            Änderungsprotokoll
+            <span>{auditLogs.length}</span>
+          </button>
         </div>
 
         {notice && (
@@ -1280,7 +1892,13 @@ function TeacherView({
           </div>
         )}
 
-        <section className="event-management" aria-labelledby="event-list-title">
+        {activePanel === "events" ? (
+        <section
+          id="events-panel"
+          className="event-management"
+          role="tabpanel"
+          aria-labelledby="events-tab event-list-title"
+        >
           <div className="management-heading">
             <div>
               <p className="overline">Jahresübersicht</p>
@@ -1345,6 +1963,23 @@ function TeacherView({
             </div>
           )}
         </section>
+        ) : (
+          <div
+            id="audit-panel"
+            className="audit-panel"
+            role="tabpanel"
+            aria-labelledby="audit-tab"
+          >
+            <AuditLogView
+              logs={auditLogs}
+              hasMore={auditHasMore}
+              isLoading={isAuditLoading}
+              error={auditError}
+              onRestore={onRestore}
+              onLoadMore={onLoadMoreAuditLogs}
+            />
+          </div>
+        )}
       </main>
       <PrototypeFooter />
     </div>
@@ -1725,6 +2360,11 @@ function PrototypeFooter() {
 export default function KlassenkompassApp() {
   const [view, setView] = useState<AppView>("access");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [actorEmail, setActorEmail] = useState("");
+  const [auditLogs, setAuditLogs] = useState<CalendarEventAuditLog[]>([]);
+  const [auditHasMore, setAuditHasMore] = useState(false);
+  const [isAuditLoading, setIsAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState("");
   const [sessionToken, setSessionToken] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent>();
@@ -1736,26 +2376,75 @@ export default function KlassenkompassApp() {
     if (nextView === "access") {
       setSessionToken("");
       setEvents([]);
+      setActorEmail("");
+      setAuditLogs([]);
+      setAuditHasMore(false);
+      setAuditError("");
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function authenticate(code: string) {
-    const accessResponse = await fetch(apiUrl("/api/access"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
+  async function requestAuditLogs(token: string, offset: number) {
+    const response = await fetch(apiUrl(`/api/audit-logs?offset=${offset}`), {
+      headers: { Authorization: `Bearer ${token}` },
     });
-    if (!accessResponse.ok) {
+    if (!response.ok) {
       throw new Error(
-        await apiError(accessResponse, "Dieser Zugangscode ist nicht gültig."),
+        await apiError(response, "Das Änderungsprotokoll konnte nicht geladen werden."),
       );
     }
-
-    const session = (await accessResponse.json()) as {
-      role: Exclude<AppView, "access">;
-      token: string;
+    return (await response.json()) as {
+      logs: CalendarEventAuditLog[];
+      hasMore: boolean;
     };
+  }
+
+  async function refreshAuditLogs(token = sessionToken) {
+    if (!token) return;
+    setIsAuditLoading(true);
+    setAuditError("");
+    try {
+      const page = await requestAuditLogs(token, 0);
+      setAuditLogs(page.logs);
+      setAuditHasMore(page.hasMore);
+    } catch (error) {
+      setAuditError(
+        error instanceof Error
+          ? error.message
+          : "Das Änderungsprotokoll konnte nicht geladen werden.",
+      );
+    } finally {
+      setIsAuditLoading(false);
+    }
+  }
+
+  async function loadMoreAuditLogs() {
+    if (isAuditLoading || !auditHasMore || !sessionToken) return;
+    setIsAuditLoading(true);
+    setAuditError("");
+    try {
+      const page = await requestAuditLogs(sessionToken, auditLogs.length);
+      setAuditLogs((current) => {
+        const knownIds = new Set(current.map((log) => log.id));
+        return [...current, ...page.logs.filter((log) => !knownIds.has(log.id))];
+      });
+      setAuditHasMore(page.hasMore);
+    } catch (error) {
+      setAuditError(
+        error instanceof Error
+          ? error.message
+          : "Ältere Protokolleinträge konnten nicht geladen werden.",
+      );
+    } finally {
+      setIsAuditLoading(false);
+    }
+  }
+
+  async function openAuthenticatedSession(session: {
+    role: "student" | "teacher";
+    token: string;
+    actorEmail?: string;
+  }) {
     const eventsResponse = await fetch(apiUrl("/api/events"), {
       headers: { Authorization: `Bearer ${session.token}` },
     });
@@ -1768,7 +2457,67 @@ export default function KlassenkompassApp() {
     const body = (await eventsResponse.json()) as { events: CalendarEvent[] };
     setEvents(body.events);
     setSessionToken(session.token);
+    setActorEmail(session.actorEmail ?? "");
+    if (session.role === "teacher") {
+      await refreshAuditLogs(session.token);
+    }
     changeView(session.role);
+  }
+
+  async function authenticateStudent(code: string) {
+    const accessResponse = await fetch(apiUrl("/api/access"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    if (!accessResponse.ok) {
+      throw new Error(
+        await apiError(accessResponse, "Dieser Zugangscode ist nicht gültig."),
+      );
+    }
+
+    const session = (await accessResponse.json()) as {
+      role: "student";
+      token: string;
+    };
+    await openAuthenticatedSession(session);
+  }
+
+  async function requestAdminCode(email: string) {
+    const response = await fetch(apiUrl("/api/admin-auth/request"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      throw new Error(
+        await apiError(response, "Der Einmalcode konnte nicht angefordert werden."),
+      );
+    }
+    return (await response.json()) as { challengeId: string; message: string };
+  }
+
+  async function verifyAdminCode(
+    email: string,
+    challengeId: string,
+    code: string,
+  ) {
+    const response = await fetch(apiUrl("/api/admin-auth/verify"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, challengeId, code }),
+    });
+    if (!response.ok) {
+      throw new Error(
+        await apiError(response, "Der Einmalcode konnte nicht geprüft werden."),
+      );
+    }
+    const session = (await response.json()) as {
+      role: "teacher";
+      token: string;
+      actorEmail: string;
+    };
+    await openAuthenticatedSession(session);
   }
 
   async function saveEvent(event: NewCalendarEvent) {
@@ -1798,6 +2547,7 @@ export default function KlassenkompassApp() {
         ? `„${body.event.title}“ wurde aktualisiert.`
         : `„${body.event.title}“ wurde dauerhaft gespeichert.`,
     );
+    await refreshAuditLogs();
   }
 
   async function deleteEvent(event: CalendarEvent) {
@@ -1816,6 +2566,47 @@ export default function KlassenkompassApp() {
 
     setEvents((current) => current.filter((entry) => entry.id !== event.id));
     setNotice(`„${event.title}“ wurde gelöscht.`);
+    await refreshAuditLogs();
+  }
+
+  async function restoreAuditLog(log: CalendarEventAuditLog) {
+    setNotice("");
+    const response = await fetch(apiUrl("/api/audit-logs/restore"), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ auditLogId: log.id }),
+    });
+    if (!response.ok) {
+      throw new Error(
+        await apiError(response, "Der frühere Stand konnte nicht wiederhergestellt werden."),
+      );
+    }
+
+    const body = (await response.json()) as {
+      eventId: string;
+      event: CalendarEvent | null;
+    };
+    setEvents((current) => {
+      if (!body.event) {
+        return current.filter((event) => event.id !== body.eventId);
+      }
+      const restoredEvent = body.event;
+      const exists = current.some((event) => event.id === restoredEvent.id);
+      return exists
+        ? current.map((event) =>
+            event.id === restoredEvent.id ? restoredEvent : event,
+          )
+        : [...current, restoredEvent];
+    });
+    setNotice(
+      body.event
+        ? `Der frühere Stand von „${body.event.title}“ wurde wiederhergestellt.`
+        : `Der Stand vor der Erstellung von „${log.afterState?.title ?? "dem Termin"}“ wurde wiederhergestellt.`,
+    );
+    await refreshAuditLogs();
   }
 
   function closeEventForm() {
@@ -1840,13 +2631,24 @@ export default function KlassenkompassApp() {
 
   return (
     <>
-      {view === "access" && <AccessView onAuthenticate={authenticate} />}
+      {view === "access" && (
+        <AccessView
+          onStudentAuthenticate={authenticateStudent}
+          onRequestAdminCode={requestAdminCode}
+          onVerifyAdminCode={verifyAdminCode}
+        />
+      )}
       {view === "student" && (
         <StudentView events={events} onAccess={leaveAccess} />
       )}
       {view === "teacher" && (
         <TeacherView
           events={events}
+          actorEmail={actorEmail}
+          auditLogs={auditLogs}
+          auditHasMore={auditHasMore}
+          isAuditLoading={isAuditLoading}
+          auditError={auditError}
           onAccess={leaveAccess}
           onAddClick={() => {
             setNotice("");
@@ -1859,6 +2661,8 @@ export default function KlassenkompassApp() {
             setIsFormOpen(true);
           }}
           onDelete={deleteEvent}
+          onRestore={restoreAuditLog}
+          onLoadMoreAuditLogs={loadMoreAuditLogs}
           notice={notice}
         />
       )}

@@ -17,8 +17,10 @@ interface Env {
     prepare(query: string): unknown;
   };
   STUDENT_ACCESS_CODE?: string;
-  ADMIN_ACCESS_CODE?: string;
   AUTH_RATE_LIMIT_SECRET?: string;
+  ADMIN_EMAIL_ALLOWLIST?: string;
+  ADMIN_EMAIL_FROM?: string;
+  RESEND_API_KEY?: string;
 }
 
 interface ExecutionContext {
