@@ -369,9 +369,12 @@ function AccessView({
               onSubmit={handleStudentSubmit}
               noValidate
             >
-              <label className="field-label" htmlFor="access-code">
-                Klassencode
-              </label>
+              <div className="code-field-label">
+                <label className="field-label" htmlFor="access-code">
+                  Klassencode
+                </label>
+                <span className="code-field-status">Serverprüfung</span>
+              </div>
               <div className="code-field-wrap">
                 <input
                   ref={accessCodeRef}
@@ -417,7 +420,6 @@ function AccessView({
                     <Eye size={18} aria-hidden="true" />
                   )}
                 </button>
-                <span className="code-field-status">Serverprüfung</span>
               </div>
               <p className="field-hint" id="student-code-hint">
                 Schüler benötigen nur den gemeinsamen Klassencode – keinen Namen

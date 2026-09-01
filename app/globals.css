@@ -510,8 +510,19 @@ p {
   position: relative;
 }
 
+.code-field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.code-field-label .field-label {
+  margin-bottom: 8px;
+}
+
 .code-input {
-  padding-right: 140px;
+  padding-right: 58px;
   letter-spacing: 0.04em;
 }
 
@@ -536,9 +547,10 @@ p {
 }
 
 .code-field-status {
-  position: absolute;
-  top: 50%;
-  right: 50px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 24px;
   padding: 5px 7px;
   border-radius: 6px;
   background: var(--paper-deep);
@@ -547,7 +559,6 @@ p {
   font-weight: 750;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  transform: translateY(-50%);
 }
 
 .admin-email-field-wrap {
