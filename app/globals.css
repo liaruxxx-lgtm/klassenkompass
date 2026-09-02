@@ -1301,6 +1301,55 @@ h3 {
   margin-top: 58px;
 }
 
+.timeline-swap-slot {
+  position: relative;
+  min-width: 0;
+  min-height: 355px;
+}
+
+.timeline-swap-panel {
+  position: relative;
+  width: 100%;
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition:
+    opacity 0.28s ease,
+    transform 0.48s cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 0.48s;
+  will-change: opacity, transform;
+}
+
+.timeline-swap-panel-calendar {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate3d(18px, 0, 0) scale(0.985);
+}
+
+.timeline-swap-slot.is-calendar {
+  min-height: min(800px, calc(100svh - 48px));
+}
+
+.timeline-swap-slot.is-calendar .timeline-swap-panel-timeline {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate3d(-18px, 0, 0) scale(0.985);
+}
+
+.timeline-swap-slot.is-calendar .timeline-swap-panel-calendar {
+  position: relative;
+  inset: auto;
+  visibility: visible;
+  pointer-events: auto;
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
 .timeline-card,
 .category-card,
 .event-management,
@@ -2313,6 +2362,20 @@ h3 {
   box-shadow: var(--shadow-floating);
 }
 
+.calendar-swap-view {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+
+.calendar-swap-view .calendar-modal {
+  width: 100%;
+  height: min(800px, calc(100svh - 48px));
+  min-height: 0;
+  max-height: none;
+  border-radius: var(--radius-xl);
+}
+
 .calendar-toolbar {
   display: grid;
   min-height: 84px;
@@ -2360,6 +2423,19 @@ h3 {
 .calendar-month-navigation button:active,
 .calendar-close-button:active {
   transform: scale(0.965);
+}
+
+.calendar-close-button {
+  display: inline-flex;
+  width: auto;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+}
+
+.calendar-close-button span {
+  font-size: 12px;
+  font-weight: 720;
 }
 
 .calendar-title-block {
@@ -3765,6 +3841,38 @@ h3 {
 
   .calendar-modal {
     height: 100dvh;
+  }
+
+  .timeline-swap-slot.is-calendar {
+    min-height: 0;
+  }
+
+  .timeline-swap-slot.is-calendar .timeline-swap-panel-calendar {
+    position: relative;
+    inset: auto;
+  }
+
+  .calendar-swap-view,
+  .calendar-swap-view .calendar-modal {
+    height: auto;
+  }
+
+  .calendar-swap-view .calendar-modal {
+    min-height: 0;
+    border-radius: 24px;
+  }
+
+  .calendar-swap-view .calendar-layout {
+    overflow: visible;
+  }
+
+  .calendar-close-button {
+    width: 44px;
+    padding: 0;
+  }
+
+  .calendar-close-button span {
+    display: none;
   }
 
   .calendar-toolbar {

@@ -939,10 +939,12 @@ function Timeline({
   events,
   onSelect,
   onOpenCalendar,
+  calendarButtonRef,
 }: {
   events: CalendarEvent[];
   onSelect: (event: CalendarEvent) => void;
   onOpenCalendar: () => void;
+  calendarButtonRef: { current: HTMLButtonElement | null };
 }) {
   return (
     <section className="timeline-card" aria-labelledby="timeline-title">
@@ -952,6 +954,7 @@ function Timeline({
           <h2 id="timeline-title">Chronologische Übersicht</h2>
         </div>
         <button
+          ref={calendarButtonRef}
           className="timeline-calendar-button"
           type="button"
           onClick={onOpenCalendar}
@@ -997,10 +1000,12 @@ const calendarWeekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"] as const;
 
 function CalendarOverview({
   events,
+  isActive,
   onClose,
   onSelectEvent,
 }: {
   events: CalendarEvent[];
+  isActive: boolean;
   onClose: () => void;
   onSelectEvent: (event: CalendarEvent) => void;
 }) {
@@ -1056,18 +1061,17 @@ function CalendarOverview({
   }).format(selectedDate);
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!isActive) return;
+
     closeButtonRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onClose]);
+  }, [isActive, onClose]);
 
   function moveMonth(offset: number) {
     const nextMonth = new Date(
@@ -1106,11 +1110,15 @@ function CalendarOverview({
   }
 
   return (
-    <div className="modal-backdrop calendar-backdrop">
+    <div
+      className="calendar-backdrop calendar-swap-view"
+      aria-hidden={!isActive}
+      inert={!isActive}
+    >
       <section
         className="calendar-modal"
-        role="dialog"
-        aria-modal="true"
+        role={isActive ? "dialog" : undefined}
+        aria-modal={isActive ? false : undefined}
         aria-labelledby="calendar-title"
       >
         <header className="calendar-toolbar">
@@ -1137,7 +1145,8 @@ function CalendarOverview({
               onClick={onClose}
               aria-label="Kalenderansicht schließen"
             >
-              <X size={21} aria-hidden="true" />
+              <ArrowLeft size={19} aria-hidden="true" />
+              <span>Chronologie</span>
             </button>
           </div>
         </header>
@@ -1662,6 +1671,7 @@ function StudentView({
   const [activeSection, setActiveSection] = useState<StudentSection>("ueberblick");
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent>();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const timelineCalendarButtonRef = useRef<HTMLButtonElement>(null);
   const today = dateKey(new Date());
   const sortedEvents = useMemo(() => [...events].sort(compareEvents), [events]);
   const currentPeriod = sortedEvents.find(
@@ -1720,6 +1730,10 @@ function StudentView({
     });
   }
 
+  function closeCalendar() {
+    setIsCalendarOpen(false);
+  }
+
   return (
     <div className={`app-page student-page ${studentMode === "timetable" ? "student-page-timetable" : ""}`}>
       <AppHeader view="student" onAccess={onAccess} />
@@ -1748,11 +1762,45 @@ function StudentView({
             <UpcomingEvents events={upcomingEvents} onSelect={setSelectedEvent} />
 
             <div className="lower-dashboard-grid" id="jahresblick">
-              <Timeline
-                events={sortedEvents}
-                onSelect={setSelectedEvent}
-                onOpenCalendar={() => setIsCalendarOpen(true)}
-              />
+              <div className={`timeline-swap-slot ${isCalendarOpen ? "is-calendar" : ""}`}>
+                <div
+                  className="timeline-swap-panel timeline-swap-panel-timeline"
+                  aria-hidden={isCalendarOpen}
+                  inert={isCalendarOpen}
+                  onTransitionEnd={(event) => {
+                    if (
+                      isCalendarOpen ||
+                      event.target !== event.currentTarget ||
+                      event.propertyName !== "transform"
+                    ) {
+                      return;
+                    }
+                    timelineCalendarButtonRef.current?.focus();
+                  }}
+                >
+                  <Timeline
+                    events={sortedEvents}
+                    onSelect={setSelectedEvent}
+                    onOpenCalendar={() => setIsCalendarOpen(true)}
+                    calendarButtonRef={timelineCalendarButtonRef}
+                  />
+                </div>
+                <div
+                  className="timeline-swap-panel timeline-swap-panel-calendar"
+                  aria-hidden={!isCalendarOpen}
+                  inert={!isCalendarOpen}
+                >
+                  <CalendarOverview
+                    events={sortedEvents}
+                    isActive={isCalendarOpen}
+                    onClose={closeCalendar}
+                    onSelectEvent={(event) => {
+                      setIsCalendarOpen(false);
+                      setSelectedEvent(event);
+                    }}
+                  />
+                </div>
+              </div>
               <CategoryOverview events={events} />
             </div>
           </div>
@@ -1761,16 +1809,6 @@ function StudentView({
       <PrototypeFooter />
       {studentMode === "year" && (
         <MobileStudentNav activeSection={activeSection} onNavigate={navigateTo} />
-      )}
-      {isCalendarOpen && (
-        <CalendarOverview
-          events={sortedEvents}
-          onClose={() => setIsCalendarOpen(false)}
-          onSelectEvent={(event) => {
-            setIsCalendarOpen(false);
-            setSelectedEvent(event);
-          }}
-        />
       )}
       {selectedEvent && (
         <EventDetails event={selectedEvent} onClose={() => setSelectedEvent(undefined)} />
