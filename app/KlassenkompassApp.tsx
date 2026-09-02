@@ -319,7 +319,7 @@ function AccessView({
           <h1>Das Wichtige im Blick. Der Kopf bleibt frei.</h1>
           <p className="access-lead">
             Klassenkompass bündelt Epochen, Projekte, den aktuellen Stundenplan
-            und große Termine an einem ruhigen Ort – ohne täglichen Pflegeaufwand.
+            und große Termine – alles an einem Ort, ohne täglichen Pflegeaufwand.
           </p>
 
           <div className="principle-strip" aria-label="Produktprinzipien">
@@ -1736,7 +1736,7 @@ function StudentView({
               </div>
               <p>
                 Epochen, Projekte, wichtige Termine und dein aktueller Stundenplan
-                an einem ruhigen Ort.
+                – alles an einem Ort.
               </p>
             </section>
 
