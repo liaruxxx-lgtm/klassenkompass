@@ -2390,8 +2390,7 @@ h3 {
 }
 
 .calendar-today-button,
-.calendar-month-navigation button,
-.calendar-close-button {
+.calendar-month-navigation button {
   display: grid;
   min-width: 44px;
   height: 44px;
@@ -2413,27 +2412,46 @@ h3 {
 }
 
 .calendar-today-button:hover,
-.calendar-month-navigation button:hover,
-.calendar-close-button:hover {
+.calendar-month-navigation button:hover {
   border-color: var(--sage);
   background: var(--sage-soft);
 }
 
 .calendar-today-button:active,
-.calendar-month-navigation button:active,
-.calendar-close-button:active {
+.calendar-month-navigation button:active {
   transform: scale(0.965);
 }
 
-.calendar-close-button {
+.calendar-view-switch {
   display: inline-flex;
-  width: auto;
+  min-width: 44px;
+  height: 44px;
   align-items: center;
+  justify-content: center;
   gap: 7px;
-  padding: 0 12px;
+  padding: 0 15px;
+  border: 1px solid rgb(24 122 90 / 0.2);
+  border-radius: 999px;
+  background: var(--sage-soft);
+  color: var(--forest);
+  font-size: 12px;
+  font-weight: 720;
+  transition:
+    transform 0.35s cubic-bezier(0.25, 1, 0.5, 1),
+    background-color 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+    border-color 0.25s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-.calendar-close-button span {
+.calendar-view-switch:hover {
+  border-color: var(--sage);
+  background: rgb(52 199 89 / 0.16);
+}
+
+.calendar-view-switch:active {
+  transform: scale(0.965);
+}
+
+.calendar-view-switch span {
   font-size: 12px;
   font-weight: 720;
 }
@@ -3866,12 +3884,12 @@ h3 {
     overflow: visible;
   }
 
-  .calendar-close-button {
+  .calendar-view-switch {
     width: 44px;
     padding: 0;
   }
 
-  .calendar-close-button span {
+  .calendar-view-switch span {
     display: none;
   }
 

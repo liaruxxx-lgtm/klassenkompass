@@ -2,6 +2,7 @@
 
 import {
   ArrowLeft,
+  ArrowLeftRight,
   ArrowRight,
   BadgeCheck,
   Bell,
@@ -1001,12 +1002,12 @@ const calendarWeekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"] as const;
 function CalendarOverview({
   events,
   isActive,
-  onClose,
+  onSwitchView,
   onSelectEvent,
 }: {
   events: CalendarEvent[];
   isActive: boolean;
-  onClose: () => void;
+  onSwitchView: () => void;
   onSelectEvent: (event: CalendarEvent) => void;
 }) {
   const today = useMemo(() => new Date(), []);
@@ -1015,7 +1016,7 @@ function CalendarOverview({
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   );
   const [selectedDate, setSelectedDate] = useState(today);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const viewSwitchButtonRef = useRef<HTMLButtonElement>(null);
 
   const calendarDays = useMemo(() => {
     const mondayOffset = (monthStart.getDay() + 6) % 7;
@@ -1063,15 +1064,15 @@ function CalendarOverview({
   useEffect(() => {
     if (!isActive) return;
 
-    closeButtonRef.current?.focus();
+    viewSwitchButtonRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onSwitchView();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isActive, onClose]);
+  }, [isActive, onSwitchView]);
 
   function moveMonth(offset: number) {
     const nextMonth = new Date(
@@ -1139,14 +1140,15 @@ function CalendarOverview({
               </button>
             </div>
             <button
-              ref={closeButtonRef}
-              className="calendar-close-button"
+              ref={viewSwitchButtonRef}
+              className="calendar-view-switch"
               type="button"
-              onClick={onClose}
-              aria-label="Kalenderansicht schließen"
+              onClick={onSwitchView}
+              aria-label="Ansicht wechseln"
+              title="Ansicht wechseln"
             >
-              <ArrowLeft size={19} aria-hidden="true" />
-              <span>Chronologie</span>
+              <ArrowLeftRight size={18} aria-hidden="true" />
+              <span>Ansicht wechseln</span>
             </button>
           </div>
         </header>
@@ -1730,7 +1732,7 @@ function StudentView({
     });
   }
 
-  function closeCalendar() {
+  function switchToTimeline() {
     setIsCalendarOpen(false);
   }
 
@@ -1793,7 +1795,7 @@ function StudentView({
                   <CalendarOverview
                     events={sortedEvents}
                     isActive={isCalendarOpen}
-                    onClose={closeCalendar}
+                    onSwitchView={switchToTimeline}
                     onSelectEvent={(event) => {
                       setIsCalendarOpen(false);
                       setSelectedEvent(event);

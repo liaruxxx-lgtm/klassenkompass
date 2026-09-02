@@ -324,7 +324,7 @@ test("loads, creates, edits, and deletes events through the shared server API", 
   assert.notEqual(textOf(renderer.root.findByProps({ id: "calendar-title" })), initialMonth);
   await click(findButton(renderer.root, "Heute", { exact: true }));
   assert.equal(textOf(renderer.root.findByProps({ id: "calendar-title" })), initialMonth);
-  await click(renderer.root.findByProps({ "aria-label": "Kalenderansicht schließen" }));
+  await click(renderer.root.findByProps({ "aria-label": "Ansicht wechseln" }));
   assert.equal(renderer.root.findAllByProps({ role: "dialog" }).length, 0);
 
   await click(findButton(renderer.root, "Zugang wechseln", { exact: true }));
