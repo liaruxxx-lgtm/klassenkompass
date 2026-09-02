@@ -6,7 +6,7 @@
   --ink: #1c1c1e;
   --ink-soft: #3a3a3c;
   --ink-faint: #5c5c63;
-  --forest: #0066cc;
+  --forest: #187a5a;
   --forest-deep: #1c1c1e;
   --sage: #34c759;
   --sage-soft: #e8f8ed;
@@ -17,14 +17,14 @@
   --terracotta-soft: #ffebe9;
   --plum: #c2185b;
   --plum-soft: #fbe9ef;
-  --sky: #007aa3;
-  --sky-soft: #e8f8fd;
+  --sky: #167d6b;
+  --sky-soft: #e6f5f0;
   --line: #d1d1d6;
   --line-strong: #b8b8be;
   --danger: #c9342b;
   --danger-soft: #ffebe9;
-  --system-blue: #0a84ff;
-  --accent-strong: #005bb5;
+  --system-blue: #187a5a;
+  --accent-strong: #0e654b;
   --shadow-soft: 0 4px 18px rgb(0 0 0 / 0.05), 0 1px 2px rgb(0 0 0 / 0.03);
   --shadow-card: 0 10px 30px rgb(0 0 0 / 0.07), 0 2px 6px rgb(0 0 0 / 0.03);
   --shadow-floating: 0 20px 58px rgb(0 0 0 / 0.15), 0 2px 8px rgb(0 0 0 / 0.05);
@@ -92,7 +92,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 summary:focus-visible {
-  outline: 3px solid rgb(10 132 255 / 0.42);
+  outline: 3px solid rgb(24 122 90 / 0.42);
   outline-offset: 3px;
 }
 
@@ -133,10 +133,10 @@ h3 {
   width: 42px;
   height: 42px;
   place-items: center;
-  border: 1px solid rgb(0 102 204 / 0.18);
+  border: 1px solid rgb(24 122 90 / 0.18);
   border-radius: 14px;
   background: var(--surface);
-  box-shadow: 0 4px 14px rgb(0 102 204 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  box-shadow: 0 4px 14px rgb(24 122 90 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.9);
 }
 
 .brand-mark svg {
@@ -166,7 +166,7 @@ h3 {
   align-items: center;
   gap: 7px;
   padding: 7px 11px;
-  border: 1px solid rgb(0 122 255 / 0.18);
+  border: 1px solid rgb(24 122 90 / 0.18);
   border-radius: 999px;
   background: var(--sage-soft);
   color: var(--forest);
@@ -304,7 +304,7 @@ h3 {
 
 .text-input:focus {
   border-color: var(--forest);
-  box-shadow: 0 0 0 4px rgb(0 122 255 / 0.14), var(--shadow-soft);
+  box-shadow: 0 0 0 4px rgb(24 122 90 / 0.14), var(--shadow-soft);
 }
 
 .field-label,
@@ -333,7 +333,7 @@ h3 {
   overflow: hidden;
   flex-direction: column;
   background:
-    radial-gradient(circle at 88% -10%, rgb(0 122 255 / 0.13), transparent 30%),
+    radial-gradient(circle at 88% -10%, rgb(24 122 90 / 0.13), transparent 30%),
     radial-gradient(circle at -10% 94%, rgb(52 199 89 / 0.12), transparent 28%),
     var(--paper);
 }
@@ -354,7 +354,7 @@ h3 {
   right: 8%;
   width: 180px;
   height: 180px;
-  background: rgb(0 122 255 / 0.08);
+  background: rgb(24 122 90 / 0.08);
 }
 
 .access-page::after {
@@ -559,7 +559,7 @@ h3 {
 }
 
 .access-mode-tabs button.active::after {
-  border-color: rgb(0 102 204 / 0.18);
+  border-color: rgb(24 122 90 / 0.18);
   background: var(--sky-soft);
   color: var(--forest);
 }
@@ -958,7 +958,7 @@ h3 {
 }
 
 .event-open-target:focus-visible {
-  outline: 3px solid rgb(10 132 255 / 0.55);
+  outline: 3px solid rgb(24 122 90 / 0.55);
   outline-offset: -5px;
 }
 
@@ -4285,7 +4285,7 @@ h3 {
     --ink: #f5f5f7;
     --ink-soft: #ebebf5;
     --ink-faint: #a1a1a6;
-    --forest: #0a84ff;
+    --forest: #64d2a3;
     --forest-deep: #f5f5f7;
     --sage: #30d158;
     --sage-soft: #193621;
@@ -4296,13 +4296,14 @@ h3 {
     --terracotta-soft: #3b1716;
     --plum: #ff375f;
     --plum-soft: #3b1721;
-    --sky: #64d2ff;
-    --sky-soft: #16323b;
+    --sky: #5ed2bd;
+    --sky-soft: #17372f;
     --line: #38383a;
     --line-strong: #545458;
     --danger: #ff453a;
     --danger-soft: #3b1716;
-    --accent-strong: #409cff;
+    --system-blue: #64d2a3;
+    --accent-strong: #9de8c6;
     --shadow-soft: 0 4px 18px rgb(0 0 0 / 0.34), 0 1px 2px rgb(0 0 0 / 0.24);
     --shadow-card: 0 10px 30px rgb(0 0 0 / 0.38), 0 2px 6px rgb(0 0 0 / 0.24);
     --shadow-floating: 0 20px 58px rgb(0 0 0 / 0.58), 0 2px 8px rgb(0 0 0 / 0.28);
@@ -4314,7 +4315,7 @@ h3 {
 
   .access-page {
     background:
-      radial-gradient(circle at 88% -10%, rgb(10 132 255 / 0.18), transparent 30%),
+      radial-gradient(circle at 88% -10%, rgb(48 209 136 / 0.18), transparent 30%),
       radial-gradient(circle at -10% 94%, rgb(48 209 88 / 0.12), transparent 28%),
       var(--paper);
   }
@@ -4344,7 +4345,7 @@ h3 {
 
   .student-mode-switcher button:hover,
   .teacher-section-tabs button:hover {
-    background: rgb(10 132 255 / 0.14);
+    background: rgb(48 209 136 / 0.14);
   }
 
   .feature-card,
@@ -4389,7 +4390,7 @@ h3 {
   }
 
   .calendar-event-pill.category-presentation {
-    color: #64d2ff;
+    color: #5ed2bd;
   }
 
   .timetable-break-row th,
@@ -4413,7 +4414,7 @@ h3 {
   }
 
   .prototype-tag {
-    border-color: rgb(10 132 255 / 0.28);
+    border-color: rgb(48 209 136 / 0.28);
     background: var(--sage-soft);
   }
 
@@ -4438,7 +4439,7 @@ h3 {
   }
 
   .access-mode-tabs button:hover {
-    background: rgb(10 132 255 / 0.14);
+    background: rgb(48 209 136 / 0.14);
   }
 
   .access-mode-tabs button.active {
@@ -4503,7 +4504,7 @@ h3 {
 
 .student-page-timetable .timetable-entry {
   --timetable-accent: var(--system-blue);
-  --timetable-group-background: rgb(10 132 255 / 0.1);
+  --timetable-group-background: rgb(24 122 90 / 0.1);
   border-left-color: var(--timetable-accent);
   background: transparent;
   color: var(--timetable-accent);
@@ -4547,7 +4548,7 @@ h3 {
 .student-page-timetable .timetable-tone-blue,
 .student-page-timetable .timetable-tone-ocean,
 .student-page-timetable .timetable-tone-sky {
-  --timetable-accent: #007aa3;
+  --timetable-accent: #167d6b;
   --timetable-group-background: #e8f8fd;
 }
 
@@ -4837,7 +4838,7 @@ h3 {
 
 @media (prefers-color-scheme: dark) {
   .student-page-timetable .timetable-entry {
-    --timetable-group-background: rgb(10 132 255 / 0.14);
+    --timetable-group-background: rgb(100 210 163 / 0.14);
   }
 
   .student-page-timetable .timetable-tone-green {
@@ -4865,8 +4866,8 @@ h3 {
   .student-page-timetable .timetable-tone-blue,
   .student-page-timetable .timetable-tone-ocean,
   .student-page-timetable .timetable-tone-sky {
-    --timetable-accent: #64d2ff;
-    --timetable-group-background: rgb(100 210 255 / 0.14);
+    --timetable-accent: #5ed2bd;
+    --timetable-group-background: rgb(94 210 189 / 0.14);
   }
 
   .student-page-timetable .app-header {
