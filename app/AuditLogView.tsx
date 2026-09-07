@@ -239,8 +239,9 @@ export default function AuditLogView({
       <div className="audit-explanation" role="note">
         <History size={19} aria-hidden="true" />
         <p>
-          Jede Änderung zeigt die verifizierte Admin-E-Mail, Datum, Uhrzeit sowie
-          den Stand davor und danach. Frühere Stände lassen sich kontrolliert
+          Jede Änderung zeigt Zugangskennung, Datum, Uhrzeit sowie den Stand
+          davor und danach. Beim vorübergehenden Passwortzugang ist keine
+          persönliche Zuordnung möglich. Frühere Stände lassen sich kontrolliert
           zurückholen.
         </p>
       </div>

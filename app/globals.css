@@ -584,8 +584,7 @@ h3 {
   margin-bottom: 0;
 }
 
-.code-field-wrap,
-.admin-email-field-wrap {
+.code-field-wrap {
   position: relative;
 }
 
@@ -635,58 +634,6 @@ h3 {
   font-weight: 750;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-}
-
-.admin-email-field-wrap > svg {
-  position: absolute;
-  top: 50%;
-  left: 14px;
-  z-index: 1;
-  color: var(--forest);
-  pointer-events: none;
-  transform: translateY(-50%);
-}
-
-.admin-email-field-wrap .text-input {
-  padding-left: 43px;
-}
-
-.admin-email-confirmation {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin-bottom: 18px;
-  padding: 12px 13px;
-  border: 1px solid rgb(31 93 72 / 0.2);
-  border-radius: 13px;
-  background: var(--sage-soft);
-  color: var(--forest-deep);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.admin-email-confirmation svg {
-  flex: 0 0 auto;
-  margin-top: 1px;
-  color: var(--forest);
-}
-
-.admin-email-confirmation strong {
-  overflow-wrap: anywhere;
-}
-
-.admin-verification-input {
-  min-height: 58px;
-  font-size: 24px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 740;
-  letter-spacing: 0.26em;
-  text-align: center;
-}
-
-.admin-code-actions {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
 }
 
 .access-actions {
@@ -4392,13 +4339,6 @@ h3 {
     font-size: 8px;
   }
 
-  .admin-code-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-code-actions .button-ghost {
-    order: 2;
-  }
 }
 
 @media (prefers-color-scheme: dark) {

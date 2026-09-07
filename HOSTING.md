@@ -1,6 +1,6 @@
 # Klassenkompass – Hosting und Betrieb
 
-Stand: 25. August 2026
+Stand: 7. September 2026
 
 ## Öffentliche Adresse und Zustand
 
@@ -23,7 +23,7 @@ Das Repository ist öffentlich, weil diese GitHub-Pages-Veröffentlichung den
 kostenlosen öffentlichen Weg nutzt. Im Projekt befinden sich nur die fünf aus
 dem Epochenplan 2026/2027 übernommenen Epochen und die Theater-Übungszeit fürs
 Achtklass-Stück, aber keine Zugangsdaten oder personenbezogenen Termine. Der
-produktive Schülercode und die Einstellungen für den E-Mail-Versand werden als
+produktive Schülercode und das vorübergehende Admin-Passwort werden als
 geschützte Servereinstellungen verwaltet und nicht in die Browser-App eingebaut.
 
 Die frühere OpenAI-Sites-Adresse
@@ -115,12 +115,11 @@ veröffentlicht.
 Dieser Vorgang ist von der Wiederherstellung einer ganzen Website-Version zu
 unterscheiden. In der Admin-Ansicht:
 
-1. Im Reiter „Admin“ die freigeschaltete E-Mail-Adresse angeben.
-2. Den per E-Mail empfangenen sechsstelligen Einmalcode eingeben.
-3. „Änderungsprotokoll“ öffnen.
-4. Beim gewünschten Eintrag „Vorherigen Stand und Änderung ansehen“ aufklappen.
-5. Vorher- und Nachher-Werte vollständig vergleichen.
-6. „Stand davor wiederherstellen“ wählen und die konkrete Auswirkung bestätigen.
+1. Im Reiter „Admin“ das geschützte Admin-Passwort eingeben.
+2. „Änderungsprotokoll“ öffnen.
+3. Beim gewünschten Eintrag „Vorherigen Stand und Änderung ansehen“ aufklappen.
+4. Vorher- und Nachher-Werte vollständig vergleichen.
+5. „Stand davor wiederherstellen“ wählen und die konkrete Auswirkung bestätigen.
 
 Die Wiederherstellung setzt nur den betroffenen Termin auf den Zustand direkt
 vor der ausgewählten Änderung zurück. Existierte der Termin damals noch nicht,
@@ -131,29 +130,23 @@ neue Protokolleinträge erhalten; die Historie wird weder gelöscht noch
 ## Speicherung und Zugangsschutz
 
 Der Schülercode wird ausschließlich auf dem Server geprüft. Schüler geben weder
-Namen noch E-Mail-Adresse an und erhalten nur Leserechte. Für die Admin-Ansicht
-gibt es keinen gemeinsamen Code und kein Passwort: Nur Adressen aus der
-serverseitigen Freigabeliste können einen sechsstelligen Einmalcode per E-Mail
-erhalten. Der Code läuft nach zehn Minuten ab, ist nur einmal verwendbar und
-öffnet eine zeitlich begrenzte Admin-Sitzung. Wiederholte Anfragen und
-Fehlversuche werden vorübergehend blockiert.
+Namen noch E-Mail-Adresse an und erhalten nur Leserechte. Bis die geplante
+persönliche E-Mail-Anmeldung auf Cloudflare bereitsteht, schützt ein separates,
+langes Admin-Passwort die Admin-Ansicht. Es öffnet eine vier Stunden gültige
+Admin-Sitzung. Wiederholte Fehlversuche werden vorübergehend blockiert.
 
 Für den Betrieb müssen die folgenden geschützten Servereinstellungen vorhanden
 sein. Ihre tatsächlichen Werte dürfen niemals in GitHub, Dokumentation oder
 Screenshots eingetragen werden:
 
 - `STUDENT_ACCESS_CODE`: langer, zufälliger Klassencode
+- `ADMIN_ACCESS_CODE`: anderes, langes und zufälliges Admin-Passwort
 - `AUTH_RATE_LIMIT_SECRET`: zufälliges Geheimnis mit mindestens 32 Zeichen
-- `ADMIN_EMAIL_ALLOWLIST`: kommagetrennte Liste der zugelassenen Admin-Adressen
-- `ADMIN_EMAIL_FROM`: Absender auf einer für den Versand bestätigten Domain
-- `RESEND_API_KEY`: eingeschränkter API-Schlüssel für den E-Mail-Versand
-
-Der Versand läuft über die HTTPS-API von Resend. Für Nachrichten an beliebige
-Empfänger muss die Absender-Domain dort bestätigt sein; die Anleitung steht in
-der [Resend-Dokumentation](https://resend.com/docs/knowledge-base/how-do-I-create-an-email-address-or-sender-in-resend).
 
 Das Änderungsprotokoll ist ausschließlich für eine gültige Admin-Sitzung
-abrufbar. Es speichert automatisch die beim Einmalcode-Login verifizierte
-Admin-E-Mail sowie vollständige Terminstände. Ein frei eingegebener Name wird
-nicht als Identität akzeptiert. Trotzdem dürfen keine sensiblen Schüler-,
-Gesundheits-, Leistungs- oder Kontaktdaten in Terminen eingetragen werden.
+abrufbar. Während des vorübergehenden gemeinsamen Passwortzugangs werden neue
+Änderungen ehrlich als „Admin (Passwortzugang)“ protokolliert; eine bestimmte
+Person lässt sich damit nicht sicher zuordnen. Vollständige Terminstände,
+Zeitpunkt und Aktion bleiben dennoch erhalten und wiederherstellbar. Trotzdem
+dürfen keine sensiblen Schüler-, Gesundheits-, Leistungs- oder Kontaktdaten in
+Terminen eingetragen werden.

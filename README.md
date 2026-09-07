@@ -36,14 +36,13 @@ Versionen gleich.
 ## Umfang dieses Prototyps
 
 - Zugang, Schüler- und Admin-Ansicht
-- Klassencode für Schüler sowie passwortloser Admin-Zugang per E-Mail-Einmalcode
-- Admin-Freigabe ausschließlich für hinterlegte E-Mail-Adressen
+- Klassencode für Schüler sowie vorübergehender Admin-Zugang per eigenem Passwort
 - Schutz vor automatisiertem Ausprobieren und zeitlich begrenzte Sitzungen
 - dynamisches Formular für Zeiträume und einzelne Termine
 - schreibgeschützter Stundenplan-Modus mit Unterrichtszeiten, Pausen und Gruppenfächern
 - Bearbeiten und bestätigtes Löschen bestehender Termine in der Admin-Ansicht
-- Admin-Änderungsprotokoll mit verifizierter E-Mail, Datum/Uhrzeit, vollständigem
-  Vorher-/Nachher-Stand und protokollierter Wiederherstellung
+- Admin-Änderungsprotokoll mit Zugangskennzeichnung, Datum/Uhrzeit,
+  vollständigem Vorher-/Nachher-Stand und protokollierter Wiederherstellung
 - einfache Pflichtfeld- und Datumsprüfung
 - responsive Darstellung für Handy, Tablet und Desktop
 - gemeinsame, dauerhafte Speicherung in einer Server-Datenbank
@@ -53,15 +52,14 @@ Versionen gleich.
 Termine werden über eine Server-API gespeichert und bei jedem Öffnen der
 Schüler- oder Admin-Ansicht neu geladen. Sie bleiben daher nach einem Neuladen,
 auf anderen Geräten und in anderen WLANs erhalten. Der produktive Schülercode
-sowie die Admin-E-Mail-Konfiguration liegen ausschließlich als geschützte
+sowie das separate Admin-Passwort liegen ausschließlich als geschützte
 Servereinstellungen vor und werden weder in die Browser-App noch in das
 öffentliche Repository eingebaut. Ohne gültige Sitzung liefert die Termin-API
 keine Daten aus.
 
-Schüler geben weder Namen noch E-Mail-Adresse an. Für die Admin-Ansicht wird ein
-sechsstelliger, zehn Minuten gültiger Einmalcode an eine serverseitig
-freigeschaltete E-Mail-Adresse gesendet. Der Code ist nur einmal verwendbar; die
-verifizierte Adresse wird automatisch mit jeder Terminänderung gespeichert.
-Dadurch kann niemand seine Identität durch einen frei eingegebenen Namen
-vortäuschen. Einen gemeinsam genutzten Admin-Code oder ein Admin-Passwort gibt es
-nicht.
+Schüler geben weder Namen noch E-Mail-Adresse an. Bis die persönliche
+E-Mail-Anmeldung auf Cloudflare bereitsteht, wird die Admin-Ansicht mit einem
+separaten langen Passwort geschützt. Neue Änderungen erscheinen im Protokoll
+als „Admin (Passwortzugang)“. Zeitpunkt, Aktion und Vorher-/Nachher-Stand bleiben
+vollständig nachvollziehbar; eine konkrete Person kann mit einem gemeinsamen
+Passwort vorübergehend nicht sicher zugeordnet werden.

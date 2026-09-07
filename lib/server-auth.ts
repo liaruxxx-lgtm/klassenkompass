@@ -11,7 +11,8 @@ import {
 export type AccessRole = "student" | "teacher";
 
 const studentSessionLifetimeMs = 12 * 60 * 60 * 1000;
-export const teacherSessionLifetimeMs = 4 * 60 * 60 * 1000;
+const teacherSessionLifetimeMs = 4 * 60 * 60 * 1000;
+export const passwordAdminActorLabel = "Admin (Passwortzugang)";
 const failedAttemptLimit = 5;
 const attemptWindowMs = 15 * 60 * 1000;
 const blockDurationMs = 15 * 60 * 1000;
@@ -62,6 +63,22 @@ function configuredStudentCode() {
   ) {
     throw new Error(
       "Der Schülerzugang ist auf dem Server noch nicht sicher eingerichtet.",
+    );
+  }
+  return code;
+}
+
+function configuredAdminAccessCode() {
+  const code = env.ADMIN_ACCESS_CODE?.trim();
+  const studentCode = configuredStudentCode();
+  if (
+    !code ||
+    code.length < minimumAccessCodeLength ||
+    code.length > maximumAccessCodeLength ||
+    code.toUpperCase() === studentCode
+  ) {
+    throw new Error(
+      "Der Admin-Zugang ist auf dem Server noch nicht sicher eingerichtet.",
     );
   }
   return code;
@@ -206,6 +223,53 @@ export async function createStudentAccessSession(
   return { role: "student" as const, token, expiresAt };
 }
 
+export async function createAdminAccessSession(
+  request: Request,
+  code: string,
+) {
+  await ensureDatabaseSchema();
+  const normalizedCode = code.trim();
+  const adminAccessCode = configuredAdminAccessCode();
+  const rateLimit = await enforceAccessRateLimit(request, "admin-password");
+  const [candidateHash, adminHash] = await Promise.all([
+    hashAccessValue(normalizedCode),
+    hashAccessValue(adminAccessCode),
+  ]);
+
+  if (!constantTimeEqual(candidateHash, adminHash)) {
+    await recordAccessAttempt(rateLimit.identifierHash, rateLimit.attempt);
+    return null;
+  }
+
+  await clearAccessRateLimit(rateLimit.identifierHash);
+
+  const token = `${crypto.randomUUID()}.${crypto.randomUUID()}`;
+  const tokenHash = await hashAccessValue(token);
+  const now = new Date();
+  const expiresAt = new Date(
+    now.getTime() + teacherSessionLifetimeMs,
+  ).toISOString();
+
+  await cleanupExpiredAccessSessions(now.toISOString());
+  await env.DB.batch([
+    env.DB.prepare(`
+      INSERT INTO access_sessions (token_hash, role, expires_at)
+      VALUES (?, 'teacher', ?)
+    `).bind(tokenHash, expiresAt),
+    env.DB.prepare(`
+      INSERT INTO access_session_actors (token_hash, actor_name)
+      VALUES (?, ?)
+    `).bind(tokenHash, passwordAdminActorLabel),
+  ]);
+
+  return {
+    role: "teacher" as const,
+    token,
+    expiresAt,
+    actorEmail: passwordAdminActorLabel,
+  };
+}
+
 export async function getAccessIdentity(request: Request) {
   await ensureDatabaseSchema();
   const authorization = request.headers.get("authorization") ?? "";
@@ -236,6 +300,12 @@ export async function getAccessIdentity(request: Request) {
     .limit(1);
 
   if (session?.role !== "student" && session?.role !== "teacher") return null;
+  if (
+    session.role === "teacher" &&
+    session.actorEmail !== passwordAdminActorLabel
+  ) {
+    return null;
+  }
   return {
     role: session.role,
     ...(session.actorEmail ? { actorEmail: session.actorEmail } : {}),

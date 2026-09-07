@@ -41,6 +41,8 @@ export const accessSessionActors = sqliteTable("access_session_actors", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Kept for compatibility with already-applied migrations. The email-login
+// endpoints are removed and runtime initialization clears any legacy rows.
 export const adminLoginChallenges = sqliteTable(
   "admin_login_challenges",
   {

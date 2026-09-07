@@ -52,12 +52,10 @@ Object.defineProperty(globalThis, "document", {
 const persistedEvents = [];
 const persistedAuditLogs = [];
 let activeActorEmail = "";
-let pendingAdminEmail = "";
 let auditSequence = 0;
 const studentTestCode = "STUDENT-TEST-CODE-ONLY";
-const adminTestEmail = "erika.muster@schule.example";
-const secondAdminTestEmail = "mara.admin@schule.example";
-const adminVerificationCode = "482913";
+const adminTestPassword = "ADMIN-TEST-PASSWORD-ONLY";
+const adminActorLabel = "Admin (Passwortzugang)";
 
 function recordAudit(action, beforeState, afterState, restoredFromLogId) {
   auditSequence += 1;
@@ -81,7 +79,21 @@ Object.defineProperty(globalThis, "fetch", {
     const method = init.method ?? "GET";
 
     if (url.endsWith("/api/access") && method === "POST") {
-      const { code } = JSON.parse(init.body);
+      const { code, role = "student" } = JSON.parse(init.body);
+      if (role === "teacher") {
+        if (code !== adminTestPassword) {
+          return Response.json(
+            { error: "Dieses Admin-Passwort ist nicht gültig." },
+            { status: 401 },
+          );
+        }
+        activeActorEmail = adminActorLabel;
+        return Response.json({
+          role: "teacher",
+          token: "server-token-teacher",
+          actorEmail: adminActorLabel,
+        });
+      }
       if (code.toUpperCase() !== studentTestCode) {
         return Response.json(
           { error: "Dieser Zugangscode ist nicht gültig." },
@@ -90,41 +102,6 @@ Object.defineProperty(globalThis, "fetch", {
       }
       activeActorEmail = "";
       return Response.json({ role: "student", token: "server-token-student" });
-    }
-
-    if (url.endsWith("/api/admin-auth/request") && method === "POST") {
-      const { email } = JSON.parse(init.body);
-      pendingAdminEmail = email.trim().toLowerCase();
-      return Response.json(
-        {
-          challengeId: "admin-challenge-1",
-          message:
-            "Wenn diese Adresse für die Admin-Ansicht freigegeben ist, wurde ein Einmalcode versendet.",
-        },
-        { status: 202 },
-      );
-    }
-
-    if (url.endsWith("/api/admin-auth/verify") && method === "POST") {
-      const { email, challengeId, code } = JSON.parse(init.body);
-      const normalizedEmail = email.trim().toLowerCase();
-      if (
-        ![adminTestEmail, secondAdminTestEmail].includes(normalizedEmail) ||
-        normalizedEmail !== pendingAdminEmail ||
-        challengeId !== "admin-challenge-1" ||
-        code !== adminVerificationCode
-      ) {
-        return Response.json(
-          { error: "Der Einmalcode ist falsch, abgelaufen oder bereits verwendet." },
-          { status: 401 },
-        );
-      }
-      activeActorEmail = normalizedEmail;
-      return Response.json({
-        role: "teacher",
-        token: "server-token-teacher",
-        actorEmail: normalizedEmail,
-      });
     }
 
     if (url.endsWith("/api/events") && method === "GET") {
@@ -256,7 +233,6 @@ test("loads, creates, edits, and deletes events through the shared server API", 
   persistedEvents.length = 0;
   persistedAuditLogs.length = 0;
   activeActorEmail = "";
-  pendingAdminEmail = "";
   auditSequence = 0;
   let renderer;
   await act(async () => {
@@ -330,25 +306,28 @@ test("loads, creates, edits, and deletes events through the shared server API", 
   await click(findButton(renderer.root, "Zugang wechseln", { exact: true }));
   await click(findButton(renderer.root, "Admin", { exact: true }));
   assert.equal(renderer.root.findAllByProps({ id: "access-code" }).length, 0);
-  assert.equal(renderer.root.findByProps({ id: "admin-email" }).props.type, "email");
+  assert.equal(renderer.root.findByProps({ id: "admin-password" }).props.type, "password");
   await submitAccess(renderer);
-  assert.match(pageText(renderer), /freigegebene E-Mail-Adresse/);
-  await change(renderer.root.findByProps({ id: "admin-email" }), adminTestEmail);
+  assert.match(pageText(renderer), /Bitte das Admin-Passwort eingeben/);
+  await change(renderer.root.findByProps({ id: "admin-password" }), "falsch");
   await submitAccess(renderer);
-  assert.match(pageText(renderer), /Code angefordert/);
-  assert.match(pageText(renderer), new RegExp(adminTestEmail));
-  await change(renderer.root.findByProps({ id: "admin-verification-code" }), "111111");
-  await submitAccess(renderer);
-  assert.match(pageText(renderer), /Einmalcode ist falsch/);
+  assert.match(pageText(renderer), /Admin-Passwort ist nicht gültig/);
+  const showAdminPasswordButton = renderer.root.findByProps({
+    "aria-label": "Admin-Passwort anzeigen",
+  });
+  await click(showAdminPasswordButton);
+  assert.equal(renderer.root.findByProps({ id: "admin-password" }).props.type, "text");
+  await click(renderer.root.findByProps({ "aria-label": "Admin-Passwort verbergen" }));
+  assert.equal(renderer.root.findByProps({ id: "admin-password" }).props.type, "password");
   await change(
-    renderer.root.findByProps({ id: "admin-verification-code" }),
-    adminVerificationCode,
+    renderer.root.findByProps({ id: "admin-password" }),
+    adminTestPassword,
   );
   await submitAccess(renderer);
   assert.match(pageText(renderer), /Jahresrahmen verwalten/);
   assert.match(pageText(renderer), /Noch keine Termine eingetragen/);
   assert.match(pageText(renderer), /Admin-Ansicht/);
-  assert.match(pageText(renderer), new RegExp(`Verifiziert: ${adminTestEmail}`));
+  assert.match(pageText(renderer), /Angemeldet: Admin \(Passwortzugang\)/);
 
   await click(findButton(renderer.root, "Termin hinzufügen", { exact: true }));
   assert.equal(renderer.root.findAllByProps({ role: "dialog" }).length, 1);
@@ -417,7 +396,7 @@ test("loads, creates, edits, and deletes events through the shared server API", 
   await click(findButton(renderer.root, "Änderungsprotokoll", { exact: true }));
   const auditText = pageText(renderer);
   assert.match(auditText, /2 Einträge/);
-  assert.match(auditText, new RegExp(adminTestEmail));
+  assert.match(auditText, /Admin \(Passwortzugang\)/);
   assert.match(auditText, /\d{2}\.\d{2}\.\d{4}, \d{2}:\d{2} Uhr/);
   assert.match(auditText, /Termin bearbeitet/);
   assert.match(auditText, /Termin erstellt/);
@@ -477,13 +456,8 @@ test("loads, creates, edits, and deletes events through the shared server API", 
   await click(findButton(freshRenderer.root, "Zugang wechseln", { exact: true }));
   await click(findButton(freshRenderer.root, "Admin", { exact: true }));
   await change(
-    freshRenderer.root.findByProps({ id: "admin-email" }),
-    secondAdminTestEmail,
-  );
-  await submitAccess(freshRenderer);
-  await change(
-    freshRenderer.root.findByProps({ id: "admin-verification-code" }),
-    adminVerificationCode,
+    freshRenderer.root.findByProps({ id: "admin-password" }),
+    adminTestPassword,
   );
   await submitAccess(freshRenderer);
 
@@ -493,7 +467,7 @@ test("loads, creates, edits, and deletes events through the shared server API", 
   assert.equal(persistedEvents[0].title, "Prüftermin");
   assert.equal(persistedEvents[0].location, "Großer Saal");
   assert.match(pageText(freshRenderer), /Früheren Stand wiederhergestellt/);
-  assert.match(pageText(freshRenderer), new RegExp(secondAdminTestEmail));
+  assert.match(pageText(freshRenderer), /Admin \(Passwortzugang\)/);
   await click(freshRenderer.root.findByProps({ id: "events-tab" }));
   assert.equal(
     freshRenderer.root.findAllByProps({

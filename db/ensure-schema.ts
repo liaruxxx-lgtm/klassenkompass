@@ -90,6 +90,7 @@ export function ensureDatabaseSchema() {
           CREATE INDEX IF NOT EXISTS idx_admin_login_challenges_expires_at
           ON admin_login_challenges (expires_at)
         `),
+        database.prepare("DELETE FROM admin_login_challenges"),
         database.prepare(`
           CREATE TABLE IF NOT EXISTS access_rate_limits (
             identifier_hash TEXT PRIMARY KEY NOT NULL,

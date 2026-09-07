@@ -1,5 +1,6 @@
 import {
   AccessRateLimitError,
+  createAdminAccessSession,
   createStudentAccessSession,
   revokeAccessSession,
 } from "../../../lib/server-auth";
@@ -11,21 +12,45 @@ export function OPTIONS(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const payload = (await request.json()) as { code?: unknown };
+    const payload = (await request.json()) as {
+      code?: unknown;
+      role?: unknown;
+    };
     const code = typeof payload.code === "string" ? payload.code : "";
+    const role = payload.role === undefined ? "student" : payload.role;
+    if (role !== "student" && role !== "teacher") {
+      return jsonResponse(
+        request,
+        { error: "Die Zugangsart ist nicht gültig." },
+        { status: 400 },
+      );
+    }
     if (!code.trim() || code.length > 128) {
       return jsonResponse(
         request,
-        { error: "Bitte einen Zugangscode eingeben." },
+        {
+          error:
+            role === "teacher"
+              ? "Bitte das Admin-Passwort eingeben."
+              : "Bitte einen Zugangscode eingeben.",
+        },
         { status: 400 },
       );
     }
 
-    const session = await createStudentAccessSession(request, code);
+    const session =
+      role === "teacher"
+        ? await createAdminAccessSession(request, code)
+        : await createStudentAccessSession(request, code);
     if (!session) {
       return jsonResponse(
         request,
-        { error: "Dieser Zugangscode ist nicht gültig." },
+        {
+          error:
+            role === "teacher"
+              ? "Dieses Admin-Passwort ist nicht gültig."
+              : "Dieser Zugangscode ist nicht gültig.",
+        },
         { status: 401 },
       );
     }

@@ -34,7 +34,7 @@ export async function POST(request: Request) {
         request,
         {
           error:
-            "Bitte melden Sie sich erneut über die verifizierte Admin-E-Mail an.",
+            "Bitte melden Sie sich erneut mit dem Admin-Passwort an.",
         },
         { status: 401 },
       );

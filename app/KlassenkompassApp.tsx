@@ -23,7 +23,6 @@ import {
   Leaf,
   ListFilter,
   LockKeyhole,
-  Mail,
   MapPin,
   Pencil,
   Plus,
@@ -151,37 +150,20 @@ function PrototypeTag() {
 
 function AccessView({
   onStudentAuthenticate,
-  onRequestAdminCode,
-  onVerifyAdminCode,
+  onAdminAuthenticate,
 }: {
   onStudentAuthenticate: (code: string) => Promise<void>;
-  onRequestAdminCode: (
-    email: string,
-  ) => Promise<{ challengeId: string; message: string }>;
-  onVerifyAdminCode: (
-    email: string,
-    challengeId: string,
-    code: string,
-  ) => Promise<void>;
+  onAdminAuthenticate: (password: string) => Promise<void>;
 }) {
   const [accessMode, setAccessMode] = useState<"student" | "admin">("student");
   const [accessCode, setAccessCode] = useState("");
-  const [adminEmail, setAdminEmail] = useState("");
-  const [adminChallengeId, setAdminChallengeId] = useState("");
-  const [adminVerificationCode, setAdminVerificationCode] = useState("");
-  const [adminMessage, setAdminMessage] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
   const [accessError, setAccessError] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const [isAccessCodeVisible, setIsAccessCodeVisible] = useState(false);
+  const [isAdminPasswordVisible, setIsAdminPasswordVisible] = useState(false);
   const accessCodeRef = useRef<HTMLInputElement>(null);
-  const adminEmailRef = useRef<HTMLInputElement>(null);
-  const adminVerificationCodeRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (accessMode === "admin" && adminChallengeId) {
-      adminVerificationCodeRef.current?.focus();
-    }
-  }, [accessMode, adminChallengeId]);
+  const adminPasswordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleLocalModeShortcut = (event: KeyboardEvent) => {
@@ -203,10 +185,9 @@ function AccessView({
       event.preventDefault();
       setAccessMode(key === "s" ? "student" : "admin");
       setAccessError("");
-      setAdminMessage("");
       requestAnimationFrame(() => {
         if (key === "s") accessCodeRef.current?.focus();
-        else adminEmailRef.current?.focus();
+        else adminPasswordRef.current?.focus();
       });
     };
 
@@ -217,10 +198,9 @@ function AccessView({
   function switchAccessMode(mode: "student" | "admin") {
     setAccessMode(mode);
     setAccessError("");
-    setAdminMessage("");
     requestAnimationFrame(() => {
       if (mode === "student") accessCodeRef.current?.focus();
-      else adminEmailRef.current?.focus();
+      else adminPasswordRef.current?.focus();
     });
   }
 
@@ -249,59 +229,26 @@ function AccessView({
     }
   }
 
-  async function handleAdminEmailSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleAdminSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const normalizedEmail = adminEmail.trim().toLowerCase();
-    if (!normalizedEmail) {
-      setAccessError("Bitte geben Sie Ihre freigegebene E-Mail-Adresse ein.");
-      adminEmailRef.current?.focus();
-      return;
-    }
-
-    setIsChecking(true);
-    setAccessError("");
-    setAdminMessage("");
-    try {
-      const result = await onRequestAdminCode(normalizedEmail);
-      setAdminEmail(normalizedEmail);
-      setAdminChallengeId(result.challengeId);
-      setAdminVerificationCode("");
-      setAdminMessage(result.message);
-    } catch (error) {
-      setAccessError(
-        error instanceof Error
-          ? error.message
-          : "Der Einmalcode konnte nicht angefordert werden.",
-      );
-      adminEmailRef.current?.focus();
-    } finally {
-      setIsChecking(false);
-    }
-  }
-
-  async function handleAdminCodeSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!/^\d{6}$/.test(adminVerificationCode)) {
-      setAccessError("Bitte geben Sie den sechsstelligen Einmalcode ein.");
-      adminVerificationCodeRef.current?.focus();
+    const password = adminPassword.trim();
+    if (!password) {
+      setAccessError("Bitte das Admin-Passwort eingeben.");
+      adminPasswordRef.current?.focus();
       return;
     }
 
     setIsChecking(true);
     setAccessError("");
     try {
-      await onVerifyAdminCode(
-        adminEmail,
-        adminChallengeId,
-        adminVerificationCode,
-      );
+      await onAdminAuthenticate(password);
     } catch (error) {
       setAccessError(
         error instanceof Error
           ? error.message
           : "Der Admin-Zugang konnte nicht geöffnet werden.",
       );
-      adminVerificationCodeRef.current?.focus();
+      adminPasswordRef.current?.focus();
     } finally {
       setIsChecking(false);
     }
@@ -356,7 +303,7 @@ function AccessView({
               <h2 id="access-title">
                 {accessMode === "student"
                   ? "Schülerzugang öffnen"
-                  : "Admin sicher anmelden"}
+                  : "Admin anmelden"}
               </h2>
             </div>
           </div>
@@ -391,7 +338,7 @@ function AccessView({
               aria-controls="admin-access-panel"
               onClick={() => switchAccessMode("admin")}
             >
-              <Mail size={16} aria-hidden="true" />
+              <LockKeyhole size={16} aria-hidden="true" />
               Admin
             </button>
           </div>
@@ -479,121 +426,74 @@ function AccessView({
                 </button>
               </div>
             </form>
-          ) : adminChallengeId ? (
-            <form
-              id="admin-access-panel"
-              className="access-form admin-code-form"
-              role="tabpanel"
-              aria-labelledby="admin-access-tab"
-              onSubmit={handleAdminCodeSubmit}
-              noValidate
-            >
-              <div className="admin-email-confirmation" role="status">
-                <BadgeCheck size={18} aria-hidden="true" />
-                <span>
-                  Code angefordert für <strong>{adminEmail}</strong>
-                </span>
-              </div>
-              {adminMessage && <p className="field-hint">{adminMessage}</p>}
-              <label className="field-label" htmlFor="admin-verification-code">
-                Sechsstelliger Einmalcode
-              </label>
-              <input
-                ref={adminVerificationCodeRef}
-                id="admin-verification-code"
-                className={`text-input admin-verification-input ${accessError ? "input-error" : ""}`}
-                type="text"
-                inputMode="numeric"
-                enterKeyHint="go"
-                autoComplete="one-time-code"
-                spellCheck={false}
-                maxLength={6}
-                value={adminVerificationCode}
-                onChange={(event) => {
-                  setAdminVerificationCode(
-                    event.target.value.replace(/\D/g, "").slice(0, 6),
-                  );
-                  if (accessError) setAccessError("");
-                }}
-                placeholder="000000"
-                aria-invalid={Boolean(accessError)}
-                aria-describedby={accessError ? "admin-code-hint access-error" : "admin-code-hint"}
-              />
-              <p className="field-hint" id="admin-code-hint">
-                Der Code ist zehn Minuten gültig und kann nur einmal verwendet
-                werden.
-              </p>
-
-              {accessError && (
-                <p className="error-text access-code-error" id="access-error" role="alert">
-                  {accessError}
-                </p>
-              )}
-
-              <div className="access-actions admin-code-actions">
-                <button
-                  className="button button-ghost"
-                  type="button"
-                  disabled={isChecking}
-                  onClick={() => {
-                    setAdminChallengeId("");
-                    setAdminVerificationCode("");
-                    setAdminMessage("");
-                    setAccessError("");
-                    requestAnimationFrame(() => adminEmailRef.current?.focus());
-                  }}
-                >
-                  Andere Adresse
-                </button>
-                <button
-                  className="button button-primary"
-                  type="submit"
-                  disabled={isChecking}
-                >
-                  {isChecking ? "Code wird geprüft …" : "Admin-Ansicht öffnen"}
-                  <ArrowRight size={18} aria-hidden="true" />
-                </button>
-              </div>
-            </form>
           ) : (
             <form
               id="admin-access-panel"
               className="access-form"
               role="tabpanel"
               aria-labelledby="admin-access-tab"
-              onSubmit={handleAdminEmailSubmit}
+              onSubmit={handleAdminSubmit}
               noValidate
             >
-              <label className="field-label" htmlFor="admin-email">
-                Freigegebene Admin-E-Mail-Adresse
-              </label>
-              <div className="admin-email-field-wrap">
-                <Mail size={18} aria-hidden="true" />
+              <div className="code-field-label">
+                <label className="field-label" htmlFor="admin-password">
+                  Admin-Passwort
+                </label>
+                <span className="code-field-status">Serverprüfung</span>
+              </div>
+              <div className="code-field-wrap">
                 <input
-                  ref={adminEmailRef}
-                  id="admin-email"
-                  className={`text-input ${accessError ? "input-error" : ""}`}
-                  type="email"
-                  inputMode="email"
-                  enterKeyHint="send"
+                  ref={adminPasswordRef}
+                  id="admin-password"
+                  className={`text-input code-input ${accessError ? "input-error" : ""}`}
+                  type={isAdminPasswordVisible ? "text" : "password"}
+                  inputMode="text"
+                  enterKeyHint="go"
                   autoCapitalize="none"
-                  autoComplete="email"
+                  autoComplete="current-password"
                   spellCheck={false}
-                  maxLength={254}
-                  value={adminEmail}
+                  maxLength={128}
+                  value={adminPassword}
                   onChange={(event) => {
-                    setAdminEmail(event.target.value);
+                    setAdminPassword(event.target.value);
                     if (accessError) setAccessError("");
                   }}
-                  placeholder="name@schule.de"
+                  placeholder="Admin-Passwort eingeben"
                   aria-invalid={Boolean(accessError)}
-                  aria-describedby={accessError ? "admin-email-hint access-error" : "admin-email-hint"}
+                  aria-describedby={
+                    accessError
+                      ? "admin-password-hint access-error"
+                      : "admin-password-hint"
+                  }
                 />
+                <button
+                  className="code-visibility-toggle"
+                  type="button"
+                  onClick={() =>
+                    setIsAdminPasswordVisible((isVisible) => !isVisible)
+                  }
+                  aria-label={
+                    isAdminPasswordVisible
+                      ? "Admin-Passwort verbergen"
+                      : "Admin-Passwort anzeigen"
+                  }
+                  aria-pressed={isAdminPasswordVisible}
+                  title={
+                    isAdminPasswordVisible
+                      ? "Admin-Passwort verbergen"
+                      : "Admin-Passwort anzeigen"
+                  }
+                >
+                  {isAdminPasswordVisible ? (
+                    <EyeOff size={18} aria-hidden="true" />
+                  ) : (
+                    <Eye size={18} aria-hidden="true" />
+                  )}
+                </button>
               </div>
-              <p className="field-hint" id="admin-email-hint">
-                Es werden nur vorher freigegebene Adressen zugelassen. Der
-                verifizierte Admin wird automatisch über diese Adresse im
-                Protokoll ausgewiesen.
+              <p className="field-hint" id="admin-password-hint">
+                Vorübergehender Zugang, bis die persönliche E-Mail-Anmeldung
+                über Cloudflare bereitsteht.
               </p>
 
               {accessError && (
@@ -608,8 +508,8 @@ function AccessView({
                   type="submit"
                   disabled={isChecking}
                 >
-                  {isChecking ? "Einmalcode wird gesendet …" : "Einmalcode senden"}
-                  <Mail size={18} aria-hidden="true" />
+                  {isChecking ? "Passwort wird geprüft …" : "Admin-Ansicht öffnen"}
+                  <ArrowRight size={18} aria-hidden="true" />
                 </button>
               </div>
             </form>
@@ -625,8 +525,8 @@ function AccessView({
                 </>
               ) : (
                 <>
-                  <strong>Verifizierter Admin-Zugang:</strong> Kein frei
-                  eingegebener Name und kein gemeinsames Admin-Passwort.
+                  <strong>Vorübergehender Admin-Zugang:</strong> Änderungen
+                  erscheinen im Protokoll als „Admin (Passwortzugang)“.
                 </>
               )}
             </p>
@@ -1922,7 +1822,7 @@ function TeacherView({
           </p>
           <span className="session-note">
             <BadgeCheck size={14} aria-hidden="true" />
-            Verifiziert: {actorEmail}
+            Angemeldet: {actorEmail}
           </span>
         </div>
 
@@ -2545,7 +2445,7 @@ export default function KlassenkompassApp() {
     const accessResponse = await fetch(apiUrl("/api/access"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, role: "student" }),
     });
     if (!accessResponse.ok) {
       throw new Error(
@@ -2560,33 +2460,15 @@ export default function KlassenkompassApp() {
     await openAuthenticatedSession(session);
   }
 
-  async function requestAdminCode(email: string) {
-    const response = await fetch(apiUrl("/api/admin-auth/request"), {
+  async function authenticateAdmin(password: string) {
+    const response = await fetch(apiUrl("/api/access"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ code: password, role: "teacher" }),
     });
     if (!response.ok) {
       throw new Error(
-        await apiError(response, "Der Einmalcode konnte nicht angefordert werden."),
-      );
-    }
-    return (await response.json()) as { challengeId: string; message: string };
-  }
-
-  async function verifyAdminCode(
-    email: string,
-    challengeId: string,
-    code: string,
-  ) {
-    const response = await fetch(apiUrl("/api/admin-auth/verify"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, challengeId, code }),
-    });
-    if (!response.ok) {
-      throw new Error(
-        await apiError(response, "Der Einmalcode konnte nicht geprüft werden."),
+        await apiError(response, "Das Admin-Passwort ist nicht gültig."),
       );
     }
     const session = (await response.json()) as {
@@ -2711,8 +2593,7 @@ export default function KlassenkompassApp() {
       {view === "access" && (
         <AccessView
           onStudentAuthenticate={authenticateStudent}
-          onRequestAdminCode={requestAdminCode}
-          onVerifyAdminCode={verifyAdminCode}
+          onAdminAuthenticate={authenticateAdmin}
         />
       )}
       {view === "student" && (
