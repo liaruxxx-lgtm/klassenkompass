@@ -64,6 +64,7 @@ test("keeps calendar data and audit history behind server authorization", async 
   assert.match(auth, /revokeAccessSession/);
   assert.match(response, /Cache-Control", "no-store"/);
   assert.match(response, /GET, POST, PUT, DELETE, OPTIONS/);
+  assert.match(response, /KLASSENKOMPASS_WEB_ORIGIN/);
   assert.match(app, /useState<CalendarEvent\[]>\(\[\]\)/);
   assert.match(app, /type=\{isAccessCodeVisible \? "text" : "password"\}/);
   assert.match(app, /type=\{isAdminPasswordVisible \? "text" : "password"\}/);
@@ -79,6 +80,7 @@ test("keeps calendar data and audit history behind server authorization", async 
   assert.match(schema, /admin_login_challenges/);
   assert.match(envExample, /replace-with-a-long-random-student-code/);
   assert.match(envExample, /^ADMIN_ACCESS_CODE=/m);
+  assert.match(envExample, /^KLASSENKOMPASS_WEB_ORIGIN=/m);
   assert.doesNotMatch(envExample, /ADMIN_EMAIL_ALLOWLIST|RESEND_API_KEY|ADMIN_EMAIL_FROM/);
   assert.match(gitignore, /^\.env\*/m);
 

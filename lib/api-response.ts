@@ -1,16 +1,24 @@
+import { env } from "cloudflare:workers";
+
 const allowedOrigins = new Set([
-  "https://liaruxxx-lgtm.github.io",
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:4173",
   "http://localhost:5173",
 ]);
 
+function configuredWebOrigin() {
+  const value = (env as unknown as { KLASSENKOMPASS_WEB_ORIGIN?: unknown })
+    .KLASSENKOMPASS_WEB_ORIGIN;
+  return typeof value === "string" ? value.trim().replace(/\/$/, "") : "";
+}
+
 export function corsHeaders(request: Request) {
   const origin = request.headers.get("origin");
   const headers = new Headers({ Vary: "Origin" });
+  const webOrigin = configuredWebOrigin();
 
-  if (origin && allowedOrigins.has(origin)) {
+  if (origin && (allowedOrigins.has(origin) || origin === webOrigin)) {
     headers.set("Access-Control-Allow-Origin", origin);
     headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
     headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");

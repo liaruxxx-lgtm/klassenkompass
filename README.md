@@ -33,16 +33,25 @@ npm test
 npm run lint
 ```
 
+## Native iOS-Schüler-App
+
+Die native SwiftUI-Schüler-App ist bewusst ein eigenes Projekt und ein eigenes
+Repository: [separates Klassenkompass-iOS-Repository](../klassenkompass-ios).
+Dadurch enthält eine Installation der Web-Version nicht automatisch die
+iOS-App. Die App nutzt dieselbe API, wird aber separat in Xcode eingerichtet
+und installiert.
+
+Die App enthält nur die Schüleransicht. Token und Klassencode werden im
+iOS-Keychain gespeichert; die Anleitung im iOS-Repository erklärt, wie die
+API-Domain beim ersten Einrichten selbst festgelegt wird.
+
 ## Hosting und Betrieb
 
-Die feste kostenlose öffentliche Adresse lautet:
-
-<https://liaruxxx-lgtm.github.io/klassenkompass/>
-
-Der Hosting-Stand und die einfachen Bedienabläufe für Statusprüfung,
-Veröffentlichen, Ausschalten und Wiederherstellen sind in
-[HOSTING.md](HOSTING.md) dokumentiert. Die Adresse bleibt bei späteren
-Versionen gleich.
+Es ist absichtlich keine öffentliche Standard-Domain im Quellcode hinterlegt.
+Wähle bei der Erstinstallation selbst eine Web-Domain und eine API-Domain
+oder betreibe beides unter derselben Domain. Die vollständige Anleitung für
+Domains, Secrets, GitHub Pages und die Serverkonfiguration steht in
+[HOSTING.md](HOSTING.md).
 
 ## Umfang dieses Prototyps
 

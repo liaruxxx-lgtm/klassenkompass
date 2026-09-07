@@ -2,151 +2,87 @@
 
 Stand: 7. September 2026
 
-## Öffentliche Adresse und Zustand
+## Grundsatz
 
-- Öffentliche Website: <https://liaruxxx-lgtm.github.io/klassenkompass/>
-- Öffentlicher Serverdienst: <https://klassenkompass-online.liarux.chatgpt.site>
-- Quellcode und Versionsverlauf:
-  <https://github.com/liaruxxx-lgtm/klassenkompass>
-- Öffentliche Oberfläche: GitHub Pages über HTTPS
-- Gemeinsamer Server und Datenbank: Sites mit D1
-- Zugriff: öffentlich, ohne GitHub-, ChatGPT- oder OpenAI-Konto
-- Kanonischer Projektordner: `/Users/elias/Documents/ChatGPT/klassen ordner`
-- Veröffentlichungsautomatik: `.github/workflows/deploy-pages.yml`
+Dieses Repository enthält keine produktive Domain, keinen Klassencode und kein
+Admin-Passwort. Bei jeder eigenen Installation werden diese Werte selbst
+festgelegt. Die Web-Version und die native iOS-App sind getrennte Projekte;
+die iOS-App liegt im [separaten iOS-Repository](../klassenkompass-ios).
 
-Die öffentliche Oberfläche wird weiterhin von GitHub ausgeliefert. Zugänge und
-Termine laufen zusätzlich über einen dauerhaften Serverdienst mit gemeinsamer
-Datenbank. Der Mac darf ausgeschaltet sein; weder Website noch Speicherung
-hängen vom Heim-WLAN oder einem laufenden lokalen Prozess ab.
+Für eine Installation gibt es zwei frei wählbare Origins:
 
-Das Repository ist öffentlich, weil diese GitHub-Pages-Veröffentlichung den
-kostenlosen öffentlichen Weg nutzt. Im Projekt befinden sich nur die fünf aus
-dem Epochenplan 2026/2027 übernommenen Epochen und die Theater-Übungszeit fürs
-Achtklass-Stück, aber keine Zugangsdaten oder personenbezogenen Termine. Der
-produktive Schülercode und das vorübergehende Admin-Passwort werden als
-geschützte Servereinstellungen verwaltet und nicht in die Browser-App eingebaut.
+- `WEB_ORIGIN`: die genaue Browser-Origin der Web-Version
+- `API_BASE_URL`: die HTTPS-Origin des Klassenkompass-Servers
 
-Die frühere OpenAI-Sites-Adresse
-<https://klassenkompass-acht.bestefamilie.chatgpt.site> bleibt eine alte private
-Vorschau. Sie ist nicht mehr der aktuelle Server des Klassenkompasses.
+Beide können unter derselben Domain liegen. Wenn sie verschieden sind, muss
+die API die `WEB_ORIGIN` als erlaubte CORS-Origin kennen.
 
-## Bedienung über Codex
+## Erstinstallation
 
-Für den normalen Betrieb sind keine Terminalbefehle nötig. Einen Codex-Task im
-kanonischen Projektordner öffnen und den gewünschten Auftrag klar formulieren.
+1. Lege die beiden Origins bei deinem Hoster fest. Trage keine Beispielwerte
+   aus dieser Anleitung unverändert als produktive Konfiguration ein.
+2. Lege beim Server drei neue, zufällige Werte an und speichere sie nur als
+   geschützte Server-Secrets:
 
-### Status überwachen
+   - `STUDENT_ACCESS_CODE`: langer Klassencode
+   - `ADMIN_ACCESS_CODE`: anderes, langes Admin-Passwort
+   - `AUTH_RATE_LIMIT_SECRET`: zufälliger Wert mit mindestens 32 Zeichen
 
-Beispielauftrag:
+   Keiner dieser Werte gehört in GitHub, Screenshots oder die Web-App.
+3. Setze beim Server zusätzlich `KLASSENKOMPASS_WEB_ORIGIN` auf die exakte
+   `WEB_ORIGIN` ohne abschließenden `/`. Wenn Web und API dieselbe Origin
+   verwenden, kann der Wert leer bleiben.
+4. Lege in den GitHub-Repository-Einstellungen unter **Settings → Actions →
+   Variables** die Repository-Variable `KLASSENKOMPASS_API_BASE_URL` auf die
+   gewählte `API_BASE_URL` ohne abschließenden `/`.
+5. Aktiviere GitHub Pages über den Workflow **Klassenkompass veröffentlichen**.
+   Der Workflow baut ausschließlich die öffentliche Web-Oberfläche. Secrets
+   werden nicht in den Pages-Build übertragen.
+6. Prüfe anschließend die Web-Oberfläche, einen anonymen API-Aufruf und den
+   Schülerlogin. Ein anonymer Aufruf von `GET /api/events` muss `401`
+   zurückgeben.
 
-> Prüfe, ob der öffentliche Klassenkompass erreichbar ist und ob die letzte
-> GitHub-Pages-Veröffentlichung erfolgreich war. Verändere nichts.
+### Eigene GitHub-Pages-Domain
 
-Codex prüft dabei mindestens:
+Der öffentliche Build verwendet standardmäßig den Repository-Pfad
+`/klassenkompass/`. Für eine eigene Root-Domain muss der Pages-Basis-Pfad in
+`vite.public.config.ts` an die eigene Hosting-Struktur angepasst werden. Die
+konkrete Domain wird nur in der eigenen Hosting-Konfiguration festgelegt, nicht
+im Vorlagen-Repository.
 
-1. den Status des letzten GitHub-Actions-Laufs,
-2. die ausgelieferte Git-Version,
-3. eine unabhängige HTTPS-Anfrage an die öffentliche Adresse und
-4. bei einem gemeldeten Bedienfehler die Browser-Konsole.
+## Laufender Betrieb
 
-Zusätzlich zur öffentlichen Oberfläche werden dabei Server und Datenbank geprüft.
-Fehler beim Bauen und Veröffentlichen stehen im GitHub-Actions-Lauf; Fehler der
-Termin-API können außerdem in den Serverprotokollen geprüft werden.
+Eine neue Version wird veröffentlicht, indem Änderungen geprüft, getestet und
+auf `main` gepusht werden. Der Workflow baut danach automatisch die Web-Version.
 
-### Website ausschalten
+Vor jedem Push:
 
-Beispielauftrag:
+```bash
+npm ci
+npm test
+npm run lint
+git diff --check
+```
 
-> Schalte die öffentliche GitHub-Pages-Seite des Klassenkompasses aus, erhalte
-> aber Repository und Versionsverlauf, und verifiziere anschließend, dass die
-> Website nicht mehr erreichbar ist.
+Bei Server- oder Datenbankänderungen muss zusätzlich die Server-Version samt
+Datenbankmigration veröffentlicht und anschließend mit einem Schüler- und
+einem Admin-Test geprüft werden.
 
-Codex deaktiviert dafür GitHub Pages. Der Quellcode und die Versionshistorie
-bleiben erhalten. Das ist wiederherstellbar und etwas anderes als das
-unwiderrufliche Löschen des Repositorys.
+## Daten- und Zugangsschutz
 
-### Website wieder einschalten
+Die Schüleransicht benötigt nur den Klassencode und erhält Leserechte. Die
+Admin-Ansicht benötigt das separate Admin-Passwort. Schülernamen, E-Mail-
+Adressen, Gesundheitsdaten, Leistungsdaten und Kontaktdaten gehören nicht in
+Termine oder das Änderungsprotokoll.
 
-Beispielauftrag:
+Das Änderungsprotokoll speichert Vorher-/Nachher-Stände und bleibt nur nach
+gültiger Admin-Anmeldung erreichbar. Ein gemeinsames Passwort kann keine
+bestimmte Person sicher identifizieren; dafür wäre später eine persönliche
+Anmeldung mit einem passenden Identitätsdienst erforderlich.
 
-> Aktiviere GitHub Pages für den Klassenkompass wieder, veröffentliche den
-> aktuellen Stand und prüfe die öffentliche Adresse.
+## Abschalten und Wiederherstellen
 
-Codex aktiviert den GitHub-Actions-Hostingweg erneut, startet die
-Veröffentlichung und wartet auf die erfolgreiche HTTPS-Prüfung.
-
-### Eine neue Version veröffentlichen
-
-Beispielauftrag:
-
-> Prüfe die aktuellen Klassenkompass-Änderungen vollständig und veröffentliche
-> sie als neue Version unter derselben öffentlichen Adresse.
-
-Der sichere Ablauf ist:
-
-1. Änderungen im kanonischen Projektordner prüfen.
-2. `npm test`, `npm run lint` und die TypeScript-Prüfung erfolgreich ausführen.
-3. Bei Server-/Datenbankänderungen zuerst die neue Sites-Version samt D1-Migration
-   nach ausdrücklicher Freigabe veröffentlichen und die geschützten API-Wege
-   prüfen.
-4. Nur den geprüften Stand bewusst committen.
-5. Den `main`-Branch zu GitHub hochladen.
-6. Die automatische GitHub-Pages-Veröffentlichung bis zum Erfolg überwachen.
-7. Die feste Adresse ohne Anmeldung und mit geladener Bedienoberfläche prüfen.
-
-Ein lokaler Entwurf wird nicht automatisch öffentlich. Erst ein bewusst auf
-`main` hochgeladener Commit löst die Veröffentlichung aus. Die Adresse bleibt
-bei Updates unverändert.
-
-### Eine frühere Version wiederherstellen
-
-Beispielauftrag:
-
-> Zeige mir die letzten Klassenkompass-Versionen. Stelle nach meiner Auswahl
-> die gewünschte frühere Version als neuen, nachvollziehbaren Wiederherstellungs-
-> Commit her und veröffentliche sie.
-
-Codex soll keine Historie löschen oder umschreiben. Die Wiederherstellung wird
-als neuer Commit dokumentiert, erneut geprüft und über denselben Pages-Workflow
-veröffentlicht.
-
-### Einen früheren Terminstand wiederherstellen
-
-Dieser Vorgang ist von der Wiederherstellung einer ganzen Website-Version zu
-unterscheiden. In der Admin-Ansicht:
-
-1. Im Reiter „Admin“ das geschützte Admin-Passwort eingeben.
-2. „Änderungsprotokoll“ öffnen.
-3. Beim gewünschten Eintrag „Vorherigen Stand und Änderung ansehen“ aufklappen.
-4. Vorher- und Nachher-Werte vollständig vergleichen.
-5. „Stand davor wiederherstellen“ wählen und die konkrete Auswirkung bestätigen.
-
-Die Wiederherstellung setzt nur den betroffenen Termin auf den Zustand direkt
-vor der ausgewählten Änderung zurück. Existierte der Termin damals noch nicht,
-wird er entfernt. Der aktuelle Zustand und die Wiederherstellung bleiben als
-neue Protokolleinträge erhalten; die Historie wird weder gelöscht noch
-überschrieben.
-
-## Speicherung und Zugangsschutz
-
-Der Schülercode wird ausschließlich auf dem Server geprüft. Schüler geben weder
-Namen noch E-Mail-Adresse an und erhalten nur Leserechte. Bis die geplante
-persönliche E-Mail-Anmeldung auf Cloudflare bereitsteht, schützt ein separates,
-langes Admin-Passwort die Admin-Ansicht. Es öffnet eine vier Stunden gültige
-Admin-Sitzung. Wiederholte Fehlversuche werden vorübergehend blockiert.
-
-Für den Betrieb müssen die folgenden geschützten Servereinstellungen vorhanden
-sein. Ihre tatsächlichen Werte dürfen niemals in GitHub, Dokumentation oder
-Screenshots eingetragen werden:
-
-- `STUDENT_ACCESS_CODE`: langer, zufälliger Klassencode
-- `ADMIN_ACCESS_CODE`: anderes, langes und zufälliges Admin-Passwort
-- `AUTH_RATE_LIMIT_SECRET`: zufälliges Geheimnis mit mindestens 32 Zeichen
-
-Das Änderungsprotokoll ist ausschließlich für eine gültige Admin-Sitzung
-abrufbar. Während des vorübergehenden gemeinsamen Passwortzugangs werden neue
-Änderungen ehrlich als „Admin (Passwortzugang)“ protokolliert; eine bestimmte
-Person lässt sich damit nicht sicher zuordnen. Vollständige Terminstände,
-Zeitpunkt und Aktion bleiben dennoch erhalten und wiederherstellbar. Trotzdem
-dürfen keine sensiblen Schüler-, Gesundheits-, Leistungs- oder Kontaktdaten in
-Terminen eingetragen werden.
+GitHub Pages kann in den Repository-Einstellungen oder durch Deaktivieren des
+Workflows abgeschaltet werden. Repository und Versionshistorie bleiben dabei
+erhalten. Eine frühere Version wird als neuer Commit wiederhergestellt; die
+Historie wird nicht umgeschrieben.

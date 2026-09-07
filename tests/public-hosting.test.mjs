@@ -14,6 +14,7 @@ test("builds a public GitHub Pages version without an OpenAI login", async () =>
   assert.match(html, /<div id="root"><\/div>/);
   assert.match(html, /\/klassenkompass\/assets\//);
   assert.doesNotMatch(html, /signin-with-chatgpt|auth\.openai\.com/i);
+  assert.doesNotMatch(html, /chatgpt\.site/i);
   assert.doesNotMatch(
     html,
     /STUDENT_ACCESS_CODE|ADMIN_ACCESS_CODE|AUTH_RATE_LIMIT_SECRET|ADMIN_EMAIL_ALLOWLIST|ADMIN_EMAIL_FROM|RESEND_API_KEY/,
