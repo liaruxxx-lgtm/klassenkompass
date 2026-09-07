@@ -36,7 +36,7 @@ npm run lint
 ## Native iOS-Schüler-App
 
 Die native SwiftUI-Schüler-App ist bewusst ein eigenes Projekt und ein eigenes
-Repository: [separates Klassenkompass-iOS-Repository](../klassenkompass-ios).
+Repository: [separates Klassenkompass-iOS-Repository](https://github.com/liaruxxx-lgtm/klassenkompass-ios).
 Dadurch enthält eine Installation der Web-Version nicht automatisch die
 iOS-App. Die App nutzt dieselbe API, wird aber separat in Xcode eingerichtet
 und installiert.

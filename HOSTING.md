@@ -7,7 +7,7 @@ Stand: 7. September 2026
 Dieses Repository enthält keine produktive Domain, keinen Klassencode und kein
 Admin-Passwort. Bei jeder eigenen Installation werden diese Werte selbst
 festgelegt. Die Web-Version und die native iOS-App sind getrennte Projekte;
-die iOS-App liegt im [separaten iOS-Repository](../klassenkompass-ios).
+die iOS-App liegt im [separaten iOS-Repository](https://github.com/liaruxxx-lgtm/klassenkompass-ios).
 
 Für eine Installation gibt es zwei frei wählbare Origins:
 
