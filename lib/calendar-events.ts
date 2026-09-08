@@ -1,5 +1,6 @@
 export const eventTypes = [
   "period",
+  "test",
   "milestone",
   "important",
   "presentation",
@@ -7,6 +8,7 @@ export const eventTypes = [
 
 export const categories = [
   "Epochen",
+  "Tests",
   "Achtklass-Projekt",
   "Achtklass-Stück",
   "Abgaben",
@@ -75,6 +77,9 @@ export function parseNewCalendarEvent(value: unknown):
   }
   if (!isOneOf(payload.category, categories)) {
     return { error: "Der Bereich ist nicht gültig." };
+  }
+  if (payload.type === "test" && payload.category !== "Tests") {
+    return { error: "Tests müssen im Bereich „Tests“ geführt werden." };
   }
   if (!title || title.length > 120) {
     return { error: "Bitte einen Titel mit höchstens 120 Zeichen eingeben." };

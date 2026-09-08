@@ -57,6 +57,7 @@ type StudentMode = "year" | "timetable";
 
 const categoryClass: Record<Category, string> = {
   Epochen: "epoch",
+  Tests: "test",
   "Achtklass-Projekt": "project",
   "Achtklass-Stück": "play",
   Abgaben: "assignment",
@@ -65,6 +66,7 @@ const categoryClass: Record<Category, string> = {
 
 const eventTypeLabels: Record<EventType, string> = {
   period: "Epoche / Zeitraum",
+  test: "Test",
   milestone: "Abgabe oder Meilenstein",
   important: "Wichtiger Termin",
   presentation: "Probe oder Präsentation",
@@ -72,6 +74,7 @@ const eventTypeLabels: Record<EventType, string> = {
 
 const defaultCategory: Record<EventType, Category> = {
   period: "Epochen",
+  test: "Tests",
   milestone: "Achtklass-Projekt",
   important: "Achtklass-Stück",
   presentation: "Präsentationen",
@@ -1816,9 +1819,9 @@ function TeacherView({
             <Leaf size={20} />
           </span>
           <p>
-            <strong>Wenig Pflege, viel Wirkung.</strong> Epochen, Meilensteine,
-            Abgaben, Proben und Aufführungen genügen – der Stundenplan liegt
-            separat in der Schüleransicht.
+            <strong>Wenig Pflege, viel Wirkung.</strong> Epochen, Tests,
+            Meilensteine, Abgaben, Proben und Aufführungen genügen – der
+            Stundenplan liegt separat in der Schüleransicht.
           </p>
           <span className="session-note">
             <BadgeCheck size={14} aria-hidden="true" />
@@ -1969,6 +1972,7 @@ type FormErrors = Partial<
 
 function EventTypeIcon({ type }: { type: EventType }) {
   if (type === "period") return <BookOpen size={20} aria-hidden="true" />;
+  if (type === "test") return <BadgeCheck size={20} aria-hidden="true" />;
   if (type === "milestone") return <Flag size={20} aria-hidden="true" />;
   if (type === "important") return <Calendar size={20} aria-hidden="true" />;
   return <Presentation size={20} aria-hidden="true" />;
@@ -2071,6 +2075,7 @@ function EventForm({
 
   const typeChoices: { type: EventType; hint: string }[] = [
     { type: "period", hint: "Start und Ende" },
+    { type: "test", hint: "Klassenarbeit oder Prüfung" },
     { type: "milestone", hint: "Abgabe oder Etappe" },
     { type: "important", hint: "Ein wichtiges Datum" },
     { type: "presentation", hint: "Probe, Präsentation, Aufführung" },
@@ -2155,6 +2160,7 @@ function EventForm({
                   id="event-category"
                   className="text-input"
                   value={category}
+                  disabled={type === "test"}
                   onChange={(event) => setCategory(event.target.value as Category)}
                 >
                   {categories.map((entry) => (
@@ -2163,6 +2169,9 @@ function EventForm({
                 </select>
                 <ChevronDown size={17} aria-hidden="true" />
               </div>
+              {type === "test" && (
+                <p className="field-hint">Tests werden automatisch im Bereich „Tests“ geführt.</p>
+              )}
             </div>
 
             {type === "period" ? (

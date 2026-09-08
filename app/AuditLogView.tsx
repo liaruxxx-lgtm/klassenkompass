@@ -22,6 +22,7 @@ const actionLabels: Record<CalendarEventAuditLog["action"], string> = {
 
 const eventTypeLabels: Record<CalendarEvent["type"], string> = {
   period: "Epoche / Zeitraum",
+  test: "Test",
   milestone: "Abgabe oder Meilenstein",
   important: "Wichtiger Termin",
   presentation: "Probe oder Präsentation",

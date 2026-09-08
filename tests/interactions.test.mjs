@@ -344,6 +344,20 @@ test("loads, creates, edits, and deletes events through the shared server API", 
     ["Gesamte Klasse", "Gruppe 1", "Gruppe 2", "Andere Gruppe"],
   );
 
+  const testChoice = renderer.root
+    .findAllByProps({ role: "radio" })
+    .find((candidate) => textOf(candidate).includes("Test"));
+  assert.ok(testChoice, "Test-Typ wurde nicht gefunden.");
+  await click(testChoice);
+  assert.equal(renderer.root.findByProps({ id: "event-category" }).props.value, "Tests");
+  assert.equal(renderer.root.findByProps({ id: "event-category" }).props.disabled, true);
+  assert.match(pageText(renderer), /Tests werden automatisch im Bereich „Tests“ geführt/);
+  const periodChoice = renderer.root
+    .findAllByProps({ role: "radio" })
+    .find((candidate) => textOf(candidate).includes("Epoche / Zeitraum"));
+  assert.ok(periodChoice, "Epochen-Typ wurde nicht gefunden.");
+  await click(periodChoice);
+
   await change(renderer.root.findByProps({ id: "event-title" }), "Zeitraum");
   await change(renderer.root.findByProps({ id: "start-date" }), "2099-02-01");
   await change(renderer.root.findByProps({ id: "end-date" }), "2099-01-31");
@@ -492,5 +506,49 @@ test("loads, creates, edits, and deletes events through the shared server API", 
 
   await act(async () => {
     freshRenderer.unmount();
+  });
+});
+
+test("creates a test from the admin form with the Tests category", async () => {
+  persistedEvents.length = 0;
+  persistedAuditLogs.length = 0;
+  activeActorEmail = "";
+  auditSequence = 0;
+
+  let renderer;
+  await act(async () => {
+    renderer = create(React.createElement(KlassenkompassApp));
+  });
+
+  await click(renderer.root.findByProps({ id: "admin-access-tab" }));
+  await change(renderer.root.findByProps({ id: "admin-password" }), adminTestPassword);
+  await submitAccess(renderer);
+
+  await click(findButton(renderer.root, "Termin hinzufügen", { exact: true }));
+  const testChoice = renderer.root
+    .findAllByProps({ role: "radio" })
+    .find((candidate) => textOf(candidate).includes("Test"));
+  assert.ok(testChoice, "Test-Typ wurde nicht gefunden.");
+  await click(testChoice);
+  await change(renderer.root.findByProps({ id: "event-title" }), "Mathematiktest");
+  await change(renderer.root.findByProps({ id: "single-date" }), "2099-02-03");
+  await change(renderer.root.findByProps({ id: "event-time" }), "08:00");
+  await submit(renderer);
+
+  assert.equal(persistedEvents.length, 1);
+  assert.deepEqual(persistedEvents[0], {
+    id: "server-event-1",
+    type: "test",
+    category: "Tests",
+    title: "Mathematiktest",
+    startDate: "2099-02-03",
+    time: "08:00",
+    audience: "Gesamte Klasse",
+  });
+  assert.match(pageText(renderer), /Mathematiktest/);
+  assert.match(pageText(renderer), /dauerhaft gespeichert/i);
+
+  await act(async () => {
+    renderer.unmount();
   });
 });
