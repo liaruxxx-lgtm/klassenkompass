@@ -53,6 +53,13 @@ oder betreibe beides unter derselben Domain. Die vollständige Anleitung für
 Domains, Secrets, GitHub Pages und die Serverkonfiguration steht in
 [HOSTING.md](HOSTING.md).
 
+Für einen normalen eigenen Aufbau sind `app.deinedomain.de` für die Web-App
+und `api.deinedomain.de` für die API am einfachsten. Die DNS-Ziele kommen vom
+jeweiligen Hostinganbieter und werden nicht im Repository vorgegeben. Die
+Anleitung beschreibt auch, wie du die GitHub-Actions-Variable
+`KLASSENKOMPASS_API_BASE_URL` und die geschützte Server-Origin setzt, ohne
+Passwörter oder Klassencodes zu veröffentlichen.
+
 ## Umfang dieses Prototyps
 
 - Zugang, Schüler- und Admin-Ansicht
